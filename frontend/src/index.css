@@ -1,0 +1,77 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-light: #E1F5EE;
+  --text: #1a1a1a;
+  --text-sub: #666;
+  --border: #e0dfd8;
+  --bg: #f5f4f0;
+  --white: #ffffff;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100dvh;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 20px; border-radius: 8px; border: none;
+  font-size: 14px; font-weight: 500; transition: all 0.15s;
+}
+.btn-primary { background: var(--green); color: white; }
+.btn-primary:hover { background: var(--green-dark); }
+.btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-danger { background: #fee; color: #c0392b; border: 1px solid #f5c6cb; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.card {
+  background: white; border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 16px;
+}
+
+.badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 99px; font-size: 12px; font-weight: 500;
+}
+.badge-green { background: #e8f5ee; color: #0F6E56; }
+.badge-amber { background: #fff8ee; color: #854F0B; }
+.badge-red   { background: #fee; color: #c0392b; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.form-group label { font-size: 13px; color: var(--text-sub); }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 14px; background: white;
+  transition: border-color 0.15s; outline: none;
+}
+.form-group input:focus,
+.form-group select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 16px 0; margin-bottom: 16px;
+}
+.page-header h1 { font-size: 18px; font-weight: 600; }
+
+.error-msg { color: #c0392b; font-size: 13px; margin-top: 6px; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}
