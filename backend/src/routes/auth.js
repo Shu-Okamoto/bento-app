@@ -9,8 +9,9 @@ router.post('/admin/login', async (req, res) => {
   const { data, error } = await supabase
     .from('admins').select('*').eq('email', email).single();
   if (error || !data) return res.status(401).json({ error: 'メールまたはパスワードが違います' });
-  const ok = await bcrypt.compare(password, data.password_hash);
-  if (!ok) return res.status(401).json({ error: 'メールまたはパスワードが違います' });
+ const { data: check } = await supabase
+  .rpc('verify_password', { plain: password, hashed: data.password_hash });
+　if (!check) return res.status(401).json({ error: 'メールまたはパスワードが違います' });
   const token = jwt.sign({ id: data.id, role: 'admin', email: data.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { id: data.id, email: data.email, role: 'admin' } });
 });
