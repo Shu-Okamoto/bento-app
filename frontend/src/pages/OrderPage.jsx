@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { tomorrowJST, formatDeadlineJa } from '../utils/date';
 
-function getTomorrowJST() {
-  const now = new Date();
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  jst.setDate(jst.getDate() + 1);
-  return jst.toISOString().split('T')[0];
-}
+
 
 export default function OrderPage() {
   const { user } = useAuth();
@@ -16,7 +12,7 @@ export default function OrderPage() {
   const [selected, setSelected] = useState(null);
   const [selectedOpts, setSelectedOpts] = useState([]);
   const [qty, setQty] = useState(1);
-  const [date, setDate] = useState(getTomorrowJST());
+  const [date, setDate] = useState(tomorrowJST());
   const [deadlineInfo, setDeadlineInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -95,7 +91,7 @@ export default function OrderPage() {
         }}>
           <span>{deadlineInfo.allowed ? '✓' : '⚠'}</span>
           {deadlineInfo.allowed
-            ? `注文受付中 — 締切：${new Date(deadlineInfo.deadline).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}まで`
+            ? `注文受付中 — 締切：${formatDeadlineJa(deadlineInfo.deadline)}まで`
             : deadlineInfo.reason}
         </div>
       )}
@@ -142,7 +138,7 @@ export default function OrderPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>お届け日</label>
-            <input type="date" value={date} onChange={e => { setDate(e.target.value); setMsg(''); }} min={getTomorrowJST()} />
+            <input type="date" value={date} onChange={e => { setDate(e.target.value); setMsg(''); }} min={tomorrowJST()} />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>個数</label>

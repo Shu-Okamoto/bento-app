@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { parseDate, formatDateJa } from '../utils/date';
 
 export default function HistoryPage() {
   const [orders, setOrders] = useState([]);
@@ -20,9 +21,8 @@ export default function HistoryPage() {
     const now = new Date();
     // 前営業日15時のチェックはバックエンドに任せる
     // フロントでは配達日が今日以降かだけ確認
-    const delivery = new Date(deliveryDate + 'T00:00:00+09:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const delivery = parseDate(deliveryDate);
+    const today = parseDate(new Date().toISOString().split('T')[0]);
     return delivery >= today;
   }
 
