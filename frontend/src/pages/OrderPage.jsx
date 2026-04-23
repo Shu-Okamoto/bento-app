@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 function getTomorrowJST() {
   const now = new Date();
-  // JST = UTC+9
   const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   jst.setDate(jst.getDate() + 1);
   return jst.toISOString().split('T')[0];
 }
 
 export default function OrderPage() {
+  const { user } = useAuth();
+  const isFree = user?.member_type === 'free';
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [selectedOpts, setSelectedOpts] = useState([]);
@@ -20,15 +22,21 @@ export default function OrderPage() {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    api.get('/products').then(data => {
-      setProducts(data);
-      if (data.length > 0) setSelected(data[0]);
-    });
-  }, []);
+    loadProducts(date);
+  }, [date]);
 
   useEffect(() => {
     if (date) checkDeadline(date);
   }, [date]);
+
+  async function loadProducts(d) {
+    const data = await api.get(`/products?delivery_date=${d}`);
+    setProducts(data);
+    if (data.length > 0 && (!selected || !data.find(p => p.id === selected.id))) {
+      setSelected(data[0]);
+      setSelectedOpts([]);
+    }
+  }
 
   async function checkDeadline(d) {
     try {
@@ -49,18 +57,15 @@ export default function OrderPage() {
 
   const optTotal = selectedOpts.reduce((s, o) => s + o.price, 0);
   const total = selected ? (selected.price + optTotal) * qty : 0;
+  const freeMinNotMet = isFree && total < 3000;
 
   async function handleOrder() {
     if (!selected) return setMsg('商品を選んでください');
     if (!deadlineInfo?.allowed) return setMsg('この日付は注文できません');
+    if (freeMinNotMet) return setMsg('フリー会員は合計3,000円以上から注文できます');
     setLoading(true); setMsg('');
     try {
-      await api.post('/orders', {
-        product_id: selected.id,
-        quantity: qty,
-        delivery_date: date,
-        options: selectedOpts
-      });
+      await api.post('/orders', { product_id: selected.id, quantity: qty, delivery_date: date, options: selectedOpts });
       setMsg('✓ 注文が完了しました！');
       setSelectedOpts([]); setQty(1);
     } catch(err) {
@@ -72,6 +77,13 @@ export default function OrderPage() {
     <div>
       <div className="page-header"><h1>注文する</h1></div>
 
+      {/* フリー会員バナー */}
+      {isFree && (
+        <div style={{ background: '#fff8ee', border: '1px solid #FAC775', borderRadius: 8, padding: '8px 14px', marginBottom: 10, fontSize: 12, color: '#633806' }}>
+          フリー会員：合計3,000円以上から注文できます
+        </div>
+      )}
+
       {/* 締切バナー */}
       {deadlineInfo && (
         <div style={{
@@ -81,38 +93,29 @@ export default function OrderPage() {
           fontSize: 13, color: deadlineInfo.allowed ? '#0F6E56' : '#854F0B',
           display: 'flex', alignItems: 'center', gap: 8
         }}>
-          <span style={{ fontSize: 16 }}>{deadlineInfo.allowed ? '✓' : '⚠'}</span>
+          <span>{deadlineInfo.allowed ? '✓' : '⚠'}</span>
           {deadlineInfo.allowed
             ? `注文受付中 — 締切：${new Date(deadlineInfo.deadline).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}まで`
-            : deadlineInfo.reason
-          }
+            : deadlineInfo.reason}
         </div>
       )}
 
       {msg && (
-        <div style={{
-          background: msg.startsWith('✓') ? '#e8f5ee' : '#fee',
-          border: `1px solid ${msg.startsWith('✓') ? '#9FE1CB' : '#f5c6cb'}`,
-          borderRadius: 8, padding: '10px 14px', marginBottom: 14,
-          fontSize: 14, color: msg.startsWith('✓') ? '#0F6E56' : '#c0392b'
-        }}>
+        <div style={{ background: msg.startsWith('✓') ? '#e8f5ee' : '#fee', border: `1px solid ${msg.startsWith('✓') ? '#9FE1CB' : '#f5c6cb'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 14, color: msg.startsWith('✓') ? '#0F6E56' : '#c0392b' }}>
           {msg}
         </div>
       )}
 
       <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#555' }}>商品を選ぶ</h2>
+      {products.length === 0 && (
+        <p style={{ color: '#999', fontSize: 13, marginBottom: 14 }}>この日に提供できる商品がありません</p>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
         {products.map(p => (
           <div key={p.id} onClick={() => { setSelected(p); setSelectedOpts([]); }}
-            style={{
-              background: 'white',
-              border: `2px solid ${selected?.id === p.id ? '#1D9E75' : '#e0dfd8'}`,
-              borderRadius: 12, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s'
-            }}>
+            style={{ background: 'white', border: `2px solid ${selected?.id === p.id ? '#1D9E75' : '#e0dfd8'}`, borderRadius: 12, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s' }}>
             <div style={{ height: 80, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>
-              {p.image_url
-                ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : '🍱'}
+              {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🍱'}
             </div>
             <div style={{ padding: '8px 10px' }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
@@ -127,12 +130,7 @@ export default function OrderPage() {
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>オプション</div>
           {selected.product_options.map(opt => (
             <label key={opt.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #f0efe8', cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={!!selectedOpts.find(o => o.name === opt.name)}
-                onChange={() => toggleOpt(opt)}
-                style={{ accentColor: '#1D9E75', width: 16, height: 16 }}
-              />
+              <input type="checkbox" checked={!!selectedOpts.find(o => o.name === opt.name)} onChange={() => toggleOpt(opt)} style={{ accentColor: '#1D9E75', width: 16, height: 16 }} />
               <span style={{ flex: 1 }}>{opt.name}</span>
               <span style={{ color: '#1D9E75', fontWeight: 500 }}>+¥{opt.price}</span>
             </label>
@@ -144,46 +142,33 @@ export default function OrderPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>お届け日</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => { setDate(e.target.value); setMsg(''); }}
-              min={getTomorrowJST()}
-            />
+            <input type="date" value={date} onChange={e => { setDate(e.target.value); setMsg(''); }} min={getTomorrowJST()} />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>個数</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button onClick={() => setQty(q => Math.max(1, q - 1))}
-                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>−</button>
+              <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>−</button>
               <span style={{ fontSize: 16, fontWeight: 600, minWidth: 24, textAlign: 'center' }}>{qty}</span>
-              <button onClick={() => setQty(q => q + 1)}
-                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>＋</button>
+              <button onClick={() => setQty(q => q + 1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>＋</button>
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#f5f4f0', borderRadius: 8, padding: '10px 12px', fontSize: 14, marginBottom: 12 }}>
-          {selected
-            ? `${selected.name}${selectedOpts.length ? '（' + selectedOpts.map(o => o.name).join('・') + '）' : ''} × ${qty}個`
-            : '商品を選んでください'
-          }
-          {selected && (
-            <span style={{ float: 'right', fontWeight: 700, color: '#1D9E75' }}>¥{total.toLocaleString()}</span>
-          )}
+        <div style={{ background: freeMinNotMet ? '#fff8ee' : '#f5f4f0', borderRadius: 8, padding: '10px 12px', fontSize: 14, marginBottom: 12, border: freeMinNotMet ? '1px solid #FAC775' : 'none' }}>
+          {selected ? `${selected.name}${selectedOpts.length ? '（' + selectedOpts.map(o => o.name).join('・') + '）' : ''} × ${qty}個` : '商品を選んでください'}
+          {selected && <span style={{ float: 'right', fontWeight: 700, color: freeMinNotMet ? '#854F0B' : '#1D9E75' }}>¥{total.toLocaleString()}{isFree && ` / 3,000円`}</span>}
         </div>
 
-        <button
-          className="btn btn-primary"
-          style={{ width: '100%' }}
-          onClick={handleOrder}
-          disabled={loading || !selected || !deadlineInfo?.allowed}
-        >
+        {freeMinNotMet && (
+          <p style={{ fontSize: 12, color: '#854F0B', marginBottom: 8, textAlign: 'center' }}>
+            あと¥{(3000 - total).toLocaleString()}で注文できます
+          </p>
+        )}
+
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={loading || !selected || !deadlineInfo?.allowed || freeMinNotMet}>
           {loading ? '送信中...' : '注文を確定する'}
         </button>
-        <p style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 8 }}>
-          締切：前営業日 15:00まで
-        </p>
+        <p style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 8 }}>締切：前営業日 15:00まで</p>
       </div>
     </div>
   );
