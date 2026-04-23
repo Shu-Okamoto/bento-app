@@ -26,8 +26,8 @@ export default function AdminLoginPage() {
   return (
     <div style={{ maxWidth: 380, margin: '80px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, background: '#1a1a1a', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 24, margin: '0 auto 12px' }}>弁</div>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>管理者ログイン</h1>
+      <img src="/logo.JPG" alt="里の味みかわ" style={{ width: 160, margin: '0 auto 8px', display: 'block' }} />
+      <h1 style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>管理者ログイン</h1>
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
