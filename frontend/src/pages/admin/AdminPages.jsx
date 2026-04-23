@@ -50,24 +50,36 @@ export function Members() {
 }
 
 // ===== 商品管理 =====
+const DAYS = ['日','月','火','水','木','金','土'];
+const ALL_DAYS = [0,1,2,3,4,5,6];
+
 export function Products() {
   const [products, setProducts] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name:'', price:'', image_url:'', is_active:true });
+  const [form, setForm] = useState({ name:'', price:'', image_url:'', is_active:true, available_days:[0,1,2,3,4,5,6] });
   const [opts, setOpts] = useState([]);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.type==='checkbox'?e.target.checked:e.target.value }));
+
+  function toggleDay(d) {
+    setForm(f => ({
+      ...f,
+      available_days: f.available_days.includes(d)
+        ? f.available_days.filter(x => x !== d)
+        : [...f.available_days, d].sort()
+    }));
+  }
 
   useEffect(() => { api.get('/products/all').then(setProducts); }, []);
 
   function startEdit(p) {
-    setForm({ name:p.name, price:p.price, image_url:p.image_url||'', is_active:p.is_active });
+    setForm({ name:p.name, price:p.price, image_url:p.image_url||'', is_active:p.is_active, available_days:p.available_days||[0,1,2,3,4,5,6] });
     setOpts(p.product_options || []);
     setEditing(p.id); setShow(true);
   }
 
   async function save() {
-    const body = { ...form, price: Number(form.price), options: opts };
+    const body = { ...form, price: Number(form.price), options: opts, available_days: form.available_days };
     if (editing) {
       const d = await api.put(`/products/${editing}`, body);
       setProducts(prev => prev.map(p => p.id===editing ? {...d, product_options:opts} : p));
@@ -134,10 +146,15 @@ export function Products() {
               <span className={`badge ${p.is_active ? 'badge-green' : 'badge-amber'}`}>{p.is_active ? '公開' : '非公開'}</span>
             </div>
             {p.product_options?.length > 0 && (
-              <div style={{ fontSize:12, color:'#888', marginBottom:10 }}>
+              <div style={{ fontSize:12, color:'#888', marginBottom:6 }}>
                 {p.product_options.map(o => `${o.name}+¥${o.price}`).join('　')}
               </div>
             )}
+            <div style={{ fontSize:11, color:'#1D9E75', marginBottom:10 }}>
+              {p.available_days && p.available_days.length < 7
+                ? `提供曜日：${p.available_days.map(d=>DAYS[d]).join('・')}`
+                : '毎日提供'}
+            </div>
             <div style={{ display:'flex', gap:8 }}>
               <button className="btn btn-secondary" style={{ flex:1, fontSize:12, padding:'6px' }} onClick={() => startEdit(p)}>編集</button>
               <button className="btn btn-danger" style={{ flex:1, fontSize:12, padding:'6px' }} onClick={() => del(p.id)}>削除</button>
