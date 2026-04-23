@@ -32,7 +32,7 @@ export default function MemberLayout() {
             {label}
           </NavLink>
         ))}
-        <button onClick={logout} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, fontSize: 11, color: '#888', background: 'none', border: 'none' }}>
+        <button onClick={() => { logout(); window.location.href = officeSlug ? `/o/${officeSlug}/login` : '/login'; }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, fontSize: 11, color: '#888', background: 'none', border: 'none' }}>
           <span style={{ fontSize: 20 }}>🚪</span>ログアウト
         </button>
       </nav>
