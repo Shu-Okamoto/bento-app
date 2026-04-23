@@ -8,8 +8,8 @@ export default function MemberLayout() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <header style={{ background: 'white', borderBottom: '1px solid #e0dfd8', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 28, height: 28, background: '#1D9E75', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700 }}>弁</div>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>べんとうオーダー</span>
+          <img src="/logo.JPG" alt="みかわ" style={{ height: 32, objectFit: 'contain' }} />
+          <span style={{ fontWeight: 600, fontSize: 15 }}>みかわ弁当注文アプリ</span>
         </div>
         <span style={{ fontSize: 13, color: '#666' }}>{user?.name} さん</span>
       </header>
