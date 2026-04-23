@@ -15,7 +15,6 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 body {
@@ -25,22 +24,11 @@ body {
   font-size: 15px;
   line-height: 1.6;
   min-height: 100vh;
-  min-height: -webkit-fill-available;
 }
 
 a { color: inherit; text-decoration: none; }
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-input, select, textarea {
-  font-family: inherit;
-  font-size: 16px !important;
-}
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: 16px !important; }
 
 .btn {
   display: inline-flex;
@@ -52,8 +40,6 @@ input, select, textarea {
   font-size: 14px;
   font-weight: 500;
   transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
   letter-spacing: 0.01em;
 }
 .btn-primary {
@@ -62,7 +48,7 @@ input, select, textarea {
   border-color: var(--green);
   box-shadow: 0 2px 6px rgba(29,158,117,0.25);
 }
-.btn-primary:hover { background: var(--green-dark); border-color: var(--green-dark); }
+.btn-primary:hover { background: var(--green-dark); }
 .btn-primary:active { transform: scale(0.98); }
 .btn-secondary {
   background: white;
@@ -71,14 +57,12 @@ input, select, textarea {
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 .btn-secondary:hover { background: var(--bg); }
-.btn-secondary:active { transform: scale(0.98); }
 .btn-danger {
   background: #fff0f0;
   color: #c0392b;
   border-color: #f5c6cb;
 }
-.btn-danger:hover { background: #fee; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .card {
   background: white;
@@ -97,7 +81,7 @@ input, select, textarea {
 }
 .badge-green { background: #e8f5ee; color: #0F6E56; }
 .badge-amber { background: #fff8ee; color: #854F0B; }
-.badge-red   { background: #fee; color: #c0392b; }
+.badge-red { background: #fee; color: #c0392b; }
 
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-group label { font-size: 13px; color: var(--text-sub); }
@@ -112,7 +96,6 @@ input, select, textarea {
   outline: none;
   color: var(--text);
 }
-.form-group input { -webkit-appearance: none; appearance: none; }
 .form-group input:focus,
 .form-group select:focus {
   border-color: var(--green);
@@ -129,11 +112,6 @@ input, select, textarea {
 .page-header h1 { font-size: 18px; font-weight: 600; }
 
 .error-msg { color: #c0392b; font-size: 13px; margin-top: 6px; }
-
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 60px); }
-  .nav-bottom { padding-bottom: env(safe-area-inset-bottom); height: calc(60px + env(safe-area-inset-bottom)); }
-}
 
 @media print {
   .no-print { display: none !important; }
