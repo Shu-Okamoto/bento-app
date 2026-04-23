@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function MemberLayout() {
   const { user, logout } = useAuth();
+  const officeSlug = localStorage.getItem('office_slug');
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <header style={{ background: 'white', borderBottom: '1px solid #e0dfd8', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
