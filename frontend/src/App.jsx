@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Pages
-import RegisterPage   from './pages/RegisterPage';
+import RegisterPage     from './pages/RegisterPage';
+import FreeRegisterPage from './pages/FreeRegisterPage';
+import FreeLoginPage    from './pages/FreeLoginPage';
 import LoginPage      from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import OrderPage      from './pages/OrderPage';
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/o/:slug/login"    element={<LoginPage />} />
           <Route path="/login"            element={<LoginPage />} />
           <Route path="/admin/login"      element={<AdminLoginPage />} />
+          <Route path="/free/register"   element={<FreeRegisterPage />} />
+          <Route path="/free/login"      element={<FreeLoginPage />} />
 
           {/* 会員ルート */}
           <Route path="/" element={<PrivateRoute role="member"><MemberLayout /></PrivateRoute>}>
