@@ -80,6 +80,11 @@ router.post('/', authMiddleware, async (req, res) => {
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
 
+  // フリー会員は3000円以上の注文のみ可能
+  if (req.user.member_type === 'free' && total_price < 3000) {
+    return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
+  }
+
   const { data: order, error } = await supabase.from('orders')
     .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false })
     .select().single();
