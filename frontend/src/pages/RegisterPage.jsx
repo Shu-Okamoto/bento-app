@@ -19,7 +19,7 @@ export default function RegisterPage() {
     setLoading(true); setError('');
     try {
       const { token, user } = await api.post('/auth/register', { office_slug: slug, ...form });
-      login(token, user);
+      localStorage.setItem('office_slug', slug);login(token, user);
       navigate('/');
     } catch (err) {
       setError(err.message);
