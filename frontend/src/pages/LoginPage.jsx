@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true); setError('');
     try {
       const { token, user } = await api.post('/auth/login', { office_slug: slug, ...form });
-      login(token, user);
+      if (slug) localStorage.setItem('office_slug', slug);login(token, user);
       navigate('/');
     } catch (err) {
       setError(err.message);
