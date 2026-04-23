@@ -7,23 +7,25 @@ router.post('/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log('Login attempt:', email);
-    
+
     const { data, error } = await supabase
       .from('admins').select('*').eq('email', email).single();
-    
+
     console.log('DB result:', data ? 'found' : 'not found', error);
-    
+
     if (error || !data) {
       return res.status(401).json({ error: 'メールまたはパスワードが違います' });
     }
-    
-    const ok = await bcrypt.compare(password, data.password_hash);
-    console.log('Password match:', ok);
-    
-    if (!ok) {
+
+    const { data: matched } = await supabase
+      .rpc('check_admin_password', { input_email: email, input_password: password });
+
+    console.log('Password match:', matched);
+
+    if (!matched) {
       return res.status(401).json({ error: 'メールまたはパスワードが違います' });
     }
-    
+
     const token = jwt.sign(
       { id: data.id, role: 'admin', email: data.email },
       process.env.JWT_SECRET,
