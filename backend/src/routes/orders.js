@@ -17,40 +17,76 @@ async function getHolidaySettings() {
   return data || { closed_sat: true, closed_sun: true, closed_hol: true, extra_dates: [] };
 }
 
-function isHoliday(date, settings) {
-  const day = date.getDay();
-  if (settings.closed_sun && day === 0) return true;
-  if (settings.closed_sat && day === 6) return true;
-  const ds = date.toISOString().split('T')[0];
-  if (settings.closed_hol && JP_HOLIDAYS.includes(ds)) return true;
-  if ((settings.extra_dates || []).includes(ds)) return true;
+// YYYY-MM-DD 文字列からJSTの曜日を取得（0=日〜6=土）
+// ポイント: 文字列をそのまま分割して使いJSTで解釈する
+function getDayOfWeek(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // JSTのDateオブジェクトを生成（UTCオフセットを明示）
+  const d = new Date(Date.UTC(year, month - 1, day));
+  // UTCの曜日 = JSTの曜日（日付文字列がJST前提なので補正不要）
+  return d.getUTCDay(); // 0=日, 1=月, ..., 6=土
+}
+
+function isHoliday(dateStr, settings) {
+  const dow = getDayOfWeek(dateStr);
+  if (settings.closed_sun && dow === 0) return true;
+  if (settings.closed_sat && dow === 6) return true;
+  if (settings.closed_hol && JP_HOLIDAYS.includes(dateStr)) return true;
+  if ((settings.extra_dates || []).includes(dateStr)) return true;
   return false;
 }
 
-function getPrevBizDay(date, settings) {
-  const d = new Date(date);
-  d.setDate(d.getDate() - 1);
-  while (isHoliday(d, settings)) d.setDate(d.getDate() - 1);
-  return d;
+// 前営業日を求める（YYYY-MM-DD → YYYY-MM-DD）
+function getPrevBizDay(dateStr, settings) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  d.setUTCDate(d.getUTCDate() - 1);
+  let prev = d.toISOString().split('T')[0];
+  while (isHoliday(prev, settings)) {
+    const [y, m, dd] = prev.split('-').map(Number);
+    const pd = new Date(Date.UTC(y, m - 1, dd));
+    pd.setUTCDate(pd.getUTCDate() - 1);
+    prev = pd.toISOString().split('T')[0];
+  }
+  return prev;
 }
 
+// 現在のJST時刻を取得
+function nowJST() {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000);
+}
+
+// 締切チェック
 async function checkDeadline(delivery_date) {
   const settings = await getHolidaySettings();
-  const target = new Date(delivery_date + 'T00:00:00+09:00');
-  if (isHoliday(target, settings)) {
+
+  if (isHoliday(delivery_date, settings)) {
     return { allowed: false, reason: '配達日が休日です' };
   }
-  const prev = getPrevBizDay(target, settings);
-  const deadline = new Date(prev.toISOString().split('T')[0] + 'T15:00:00+09:00');
+
+  const prevDay = getPrevBizDay(delivery_date, settings);
+  // 前営業日の15:00 JSTをUTCで表現（JST = UTC+9 なので UTC 06:00）
+  const [py, pm, pd] = prevDay.split('-').map(Number);
+  const deadline = new Date(Date.UTC(py, pm - 1, pd, 6, 0, 0)); // 06:00 UTC = 15:00 JST
+
   const now = new Date();
-  console.log('Delivery:', delivery_date, 'Deadline:', deadline.toISOString(), 'Now:', now.toISOString());
+  const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
+
+  console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}, Now(UTC): ${now.toISOString()}`);
+
   if (now > deadline) {
-    return { allowed: false, reason: '締切を過ぎています（前営業日15:00まで）' };
+    return { allowed: false, reason: `締切を過ぎています（${prevDay}（${prevDow}）15:00まで）` };
   }
-  return { allowed: true, deadline: deadline.toISOString() };
+
+  return {
+    allowed: true,
+    deadline: deadline.toISOString(),
+    prevBizDay: prevDay,
+    prevBizDayLabel: `${prevDay}（${prevDow}）`
+  };
 }
 
-// 締切チェックAPI
+// 締切チェックAPI（フロントエンド用）
 router.get('/deadline-check', async (req, res) => {
   const { delivery_date } = req.query;
   if (!delivery_date) return res.status(400).json({ error: '日付を指定してください' });
@@ -80,7 +116,6 @@ router.post('/', authMiddleware, async (req, res) => {
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
 
-  // フリー会員は3000円以上の注文のみ可能
   if (req.user.member_type === 'free' && total_price < 3000) {
     return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
   }
