@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { parseDate, formatDateJa } from '../utils/date';
+import { parseDate } from '../utils/date';
 
 export default function HistoryPage() {
   const { user } = useAuth();
@@ -16,16 +16,13 @@ export default function HistoryPage() {
 
   useEffect(() => {
     api.get('/orders/my').then(setOrders);
+    // 今日の日付で呼ぶことで曜日フィルタも適用、authMiddlewareも通る
     api.get('/products').then(setProducts);
   }, []);
 
   function canEdit(order) {
     if (order.is_delivered) return false;
-    const deliveryDate = order.delivery_date;
-    const now = new Date();
-    // 前営業日15時のチェックはバックエンドに任せる
-    // フロントでは配達日が今日以降かだけ確認
-    const delivery = parseDate(deliveryDate);
+    const delivery = parseDate(order.delivery_date);
     const today = parseDate(new Date().toISOString().split('T')[0]);
     return delivery >= today;
   }
@@ -39,7 +36,6 @@ export default function HistoryPage() {
       options: order.order_options || [],
       note: order.note || ''
     });
-    setMsg('');
   }
 
   function toggleOpt(opt) {
@@ -52,7 +48,6 @@ export default function HistoryPage() {
   }
 
   async function saveEdit(orderId) {
-    // フリー会員の3000円チェック（フロントでも事前確認）
     if (isFree) {
       const prod = products.find(p => p.id === editForm.product_id);
       if (prod) {
@@ -64,7 +59,7 @@ export default function HistoryPage() {
         }
       }
     }
-    setLoading(true); setMsg('');
+    setLoading(true);
     try {
       await api.put(`/orders/${orderId}`, editForm);
       const updated = await api.get('/orders/my');
@@ -78,7 +73,7 @@ export default function HistoryPage() {
 
   async function cancelOrder(orderId) {
     if (!confirm('この注文をキャンセルしますか？')) return;
-    setLoading(true); setMsg('');
+    setLoading(true);
     try {
       await api.delete(`/orders/${orderId}`);
       setOrders(prev => prev.filter(o => o.id !== orderId));
@@ -88,8 +83,7 @@ export default function HistoryPage() {
     } finally { setLoading(false); }
   }
 
-  const selectedProduct = products.find(p => p.product_id === editForm.product_id) ||
-                          products.find(p => p.id === editForm.product_id);
+  const selectedProduct = products.find(p => p.id === editForm.product_id);
 
   return (
     <div>
@@ -102,7 +96,6 @@ export default function HistoryPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {orders.map(o => (
           <div key={o.id} className="card">
-            {/* 注文サマリー */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: editing === o.id ? 14 : 0 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{o.products?.name}</div>
@@ -125,17 +118,8 @@ export default function HistoryPage() {
                 </span>
                 {canEdit(o) && editing !== o.id && (
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ fontSize: 12, padding: '4px 10px' }}
-                      onClick={() => startEdit(o)}
-                    >編集</button>
-                    <button
-                      className="btn btn-danger"
-                      style={{ fontSize: 12, padding: '4px 10px' }}
-                      onClick={() => cancelOrder(o.id)}
-                      disabled={loading}
-                    >キャンセル</button>
+                    <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => startEdit(o)}>編集</button>
+                    <button className="btn btn-danger" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => cancelOrder(o.id)} disabled={loading}>キャンセル</button>
                   </div>
                 )}
                 {!canEdit(o) && !o.is_delivered && (
@@ -144,22 +128,14 @@ export default function HistoryPage() {
               </div>
             </div>
 
-            {/* 編集フォーム */}
             {editing === o.id && (
               <div style={{ borderTop: '1px solid #f0efe8', paddingTop: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: '#555' }}>注文を編集</div>
 
                 <div className="form-group">
                   <label>商品</label>
-                  <select
-                    value={editForm.product_id}
-                    onChange={e => {
-                      setEditForm(f => ({ ...f, product_id: e.target.value, options: [] }));
-                    }}
-                  >
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ¥{p.price}</option>
-                    ))}
+                  <select value={editForm.product_id} onChange={e => setEditForm(f => ({ ...f, product_id: e.target.value, options: [] }))}>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name} ¥{p.price}</option>)}
                   </select>
                 </div>
 
@@ -169,12 +145,7 @@ export default function HistoryPage() {
                     <div style={{ background: '#f5f4f0', borderRadius: 8, padding: '8px 12px' }}>
                       {selectedProduct.product_options.map(opt => (
                         <label key={opt.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer', fontSize: 13 }}>
-                          <input
-                            type="checkbox"
-                            checked={!!editForm.options.find(o => o.name === opt.name)}
-                            onChange={() => toggleOpt(opt)}
-                            style={{ accentColor: '#1D9E75' }}
-                          />
+                          <input type="checkbox" checked={!!editForm.options.find(o => o.name === opt.name)} onChange={() => toggleOpt(opt)} style={{ accentColor: '#1D9E75' }} />
                           <span style={{ flex: 1 }}>{opt.name}</span>
                           <span style={{ color: '#1D9E75' }}>+¥{opt.price}</span>
                         </label>
@@ -186,47 +157,38 @@ export default function HistoryPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label>お届け日</label>
-                    <input
-                      type="date"
-                      value={editForm.delivery_date}
-                      onChange={e => setEditForm(f => ({ ...f, delivery_date: e.target.value }))}
-                    />
+                    <input type="date" value={editForm.delivery_date} onChange={e => setEditForm(f => ({ ...f, delivery_date: e.target.value }))} />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label>個数</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => setEditForm(f => ({ ...f, quantity: Math.max(1, f.quantity - 1) }))}
-                        style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>−</button>
+                      <button onClick={() => setEditForm(f => ({ ...f, quantity: Math.max(1, f.quantity - 1) }))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>−</button>
                       <span style={{ fontSize: 16, fontWeight: 600, minWidth: 24, textAlign: 'center' }}>{editForm.quantity}</span>
-                      <button onClick={() => setEditForm(f => ({ ...f, quantity: f.quantity + 1 }))}
-                        style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>＋</button>
+                      <button onClick={() => setEditForm(f => ({ ...f, quantity: f.quantity + 1 }))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e0dfd8', background: '#f5f4f0', fontSize: 18 }}>＋</button>
                     </div>
                   </div>
                 </div>
 
                 <div className="form-group" style={{ marginTop: 10 }}>
                   <label>備考（任意）</label>
-                  <textarea
-                    value={editForm.note}
-                    onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))}
-                    placeholder="例：お米少なめ、アレルギーあり など"
-                    rows={2}
-                    style={{ padding: '9px 12px', border: '1px solid #e0dfd8', borderRadius: 8, background: 'white', outline: 'none', resize: 'vertical', fontSize: 14 }}
-                    maxLength={200}
-                  />
+                  <textarea value={editForm.note} onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))}
+                    placeholder="例：お米少なめ、アレルギーあり など" rows={2} maxLength={200}
+                    style={{ padding: '9px 12px', border: '1px solid #e0dfd8', borderRadius: 8, background: 'white', outline: 'none', resize: 'vertical', fontSize: 14 }} />
                 </div>
+
                 {(() => {
                   const prod = products.find(p => p.id === editForm.product_id);
-                  if (!prod) return null;
+                  if (!prod || !isFree) return null;
                   const optTotal = editForm.options.reduce((s, op) => s + (op.price || 0), 0);
                   const total = (prod.price + optTotal) * editForm.quantity;
                   const shortage = 3000 - total;
-                  return isFree && shortage > 0 ? (
-                    <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#854F0B', marginTop:8 }}>
+                  return shortage > 0 ? (
+                    <div style={{ background: '#fff8ee', border: '1px solid #FAC775', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#854F0B', marginTop: 8 }}>
                       ⚠ あと¥{shortage.toLocaleString()}で注文できます（合計：¥{total.toLocaleString()}）
                     </div>
                   ) : null;
                 })()}
+
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(o.id)} disabled={loading}>
                     {loading ? '保存中...' : '変更を保存'}
