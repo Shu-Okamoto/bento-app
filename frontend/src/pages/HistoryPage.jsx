@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { parseDate, formatDateJa } from '../utils/date';
 
 export default function HistoryPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isFree = user?.member_type === 'free';
   const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(null);
   const [products, setProducts] = useState([]);
   const [editForm, setEditForm] = useState({ product_id: '', quantity: 1, delivery_date: '', options: [], note: '' });
-  const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function HistoryPage() {
         const optTotal = editForm.options.reduce((s, o) => s + (o.price || 0), 0);
         const total = (prod.price + optTotal) * editForm.quantity;
         if (total < 3000) {
-          setMsg(`⚠ フリー会員は合計3,000円以上から注文できます（現在：¥${total.toLocaleString()}）`);
+          showToast(`合計3,000円以上から注文できます（現在：¥${total.toLocaleString()}）`, 'warn');
           return;
         }
       }
@@ -69,9 +70,9 @@ export default function HistoryPage() {
       const updated = await api.get('/orders/my');
       setOrders(updated);
       setEditing(null);
-      setMsg('✓ 注文を変更しました');
+      showToast('注文を変更しました', 'success');
     } catch(err) {
-      setMsg('⚠ ' + err.message);
+      showToast(err.message, 'error');
     } finally { setLoading(false); }
   }
 
@@ -81,9 +82,9 @@ export default function HistoryPage() {
     try {
       await api.delete(`/orders/${orderId}`);
       setOrders(prev => prev.filter(o => o.id !== orderId));
-      setMsg('✓ 注文をキャンセルしました');
+      showToast('注文をキャンセルしました', 'success');
     } catch(err) {
-      setMsg('⚠ ' + err.message);
+      showToast(err.message, 'error');
     } finally { setLoading(false); }
   }
 
@@ -93,12 +94,6 @@ export default function HistoryPage() {
   return (
     <div>
       <div className="page-header"><h1>注文履歴</h1></div>
-
-      {msg && (
-        <div style={{ background: msg.startsWith('✓') ? '#e8f5ee' : '#fee', border: `1px solid ${msg.startsWith('✓') ? '#9FE1CB' : '#f5c6cb'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 14, color: msg.startsWith('✓') ? '#0F6E56' : '#c0392b' }}>
-          {msg}
-        </div>
-      )}
 
       {orders.length === 0 && (
         <p style={{ color: '#999', textAlign: 'center', marginTop: 40 }}>注文はまだありません</p>
