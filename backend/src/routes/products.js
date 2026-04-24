@@ -20,15 +20,7 @@ router.get('/', authMiddleware, async (req, res) => {
     return p.show_for_office !== false;
   });
 
-  // 配達日の曜日でフィルタ
-  if (delivery_date) {
-    // YYYY-MM-DD をUTCで解釈してJSTの曜日を取得（タイムゾーンバグ対策）
-    const [py, pm, pd] = delivery_date.split('-').map(Number);
-    const dow = new Date(Date.UTC(py, pm - 1, pd)).getUTCDay();
-    filtered = filtered.filter(p =>
-      !p.available_days || p.available_days.length === 0 || p.available_days.includes(dow)
-    );
-  }
+  // 曜日フィルタはフロントエンド側で注文時にチェックするため、ここではフィルタしない
   res.json(filtered);
 });
 
