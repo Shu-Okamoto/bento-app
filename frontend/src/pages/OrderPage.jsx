@@ -81,18 +81,14 @@ export default function OrderPage() {
         </div>
       )}
 
-      {deadlineInfo && (
+      {deadlineInfo?.allowed && (
         <div style={{
-          background: deadlineInfo.allowed ? '#e8f5ee' : '#fff8ee',
-          border: `1px solid ${deadlineInfo.allowed ? '#9FE1CB' : '#FAC775'}`,
+          background: '#e8f5ee', border: '1px solid #9FE1CB',
           borderRadius: 8, padding: '10px 14px', marginBottom: 14,
-          fontSize: 13, color: deadlineInfo.allowed ? '#0F6E56' : '#854F0B',
-          display: 'flex', alignItems: 'center', gap: 8
+          fontSize: 13, color: '#0F6E56', display: 'flex', alignItems: 'center', gap: 8
         }}>
-          <span>{deadlineInfo.allowed ? '✓' : '⚠'}</span>
-          {deadlineInfo.allowed
-            ? `注文受付中 — 締切：${formatDeadlineJa(deadlineInfo.deadline)}まで`
-            : deadlineInfo.reason}
+          <span>✓</span>
+          {`注文受付中 — 締切：${formatDeadlineJa(deadlineInfo.deadline)}まで`}
         </div>
       )}
 
