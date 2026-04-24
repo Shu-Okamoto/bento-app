@@ -1,27 +1,36 @@
 const router = require('express').Router();
 const supabase = require('../utils/supabase');
-const { adminMiddleware } = require('../middleware/auth');
+const { adminMiddleware, authMiddleware } = require('../middleware/auth');
 
-// 商品一覧（公開・注文用）配達日の曜日でフィルタ
-router.get('/', async (req, res) => {
+// 商品一覧（注文用・会員種別でフィルタ）
+router.get('/', authMiddleware, async (req, res) => {
   const { delivery_date } = req.query;
-  let query = supabase
-    .from('products').select('*, product_options(*)').eq('is_active', true).order('sort_order');
-  const { data, error } = await query;
+  const memberType = req.user.member_type || 'office';
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, product_options(*)')
+    .eq('is_active', true)
+    .order('sort_order');
   if (error) return res.status(500).json({ error: error.message });
 
-  // 配達日が指定されている場合、その曜日に提供している商品だけ返す
+  // 会員種別で表示制限
+  let filtered = data.filter(p => {
+    if (memberType === 'free') return p.show_for_free !== false;
+    return p.show_for_office !== false;
+  });
+
+  // 配達日の曜日でフィルタ
   if (delivery_date) {
-    const dow = new Date(delivery_date + 'T00:00:00+09:00').getDay(); // 0=日〜6=土
-    const filtered = data.filter(p =>
+    const dow = new Date(delivery_date + 'T00:00:00+09:00').getDay();
+    filtered = filtered.filter(p =>
       !p.available_days || p.available_days.length === 0 || p.available_days.includes(dow)
     );
-    return res.json(filtered);
   }
-  res.json(data);
+  res.json(filtered);
 });
 
-// 全商品一覧（管理者）
+// 全商品（管理者）
 router.get('/all', adminMiddleware, async (_req, res) => {
   const { data, error } = await supabase
     .from('products').select('*, product_options(*)').order('sort_order');
@@ -31,14 +40,16 @@ router.get('/all', adminMiddleware, async (_req, res) => {
 
 // 商品作成（管理者）
 router.post('/', adminMiddleware, async (req, res) => {
-  const { name, price, image_url, is_active, sort_order, options, available_days } = req.body;
+  const { name, price, image_url, is_active, sort_order, options, available_days, show_for_office, show_for_free } = req.body;
   const { data: product, error } = await supabase
     .from('products')
     .insert({
       name, price, image_url,
       is_active: is_active ?? true,
       sort_order: sort_order ?? 0,
-      available_days: available_days ?? [0,1,2,3,4,5,6]
+      available_days: available_days ?? [0,1,2,3,4,5,6],
+      show_for_office: show_for_office ?? true,
+      show_for_free: show_for_free ?? true
     })
     .select().single();
   if (error) return res.status(400).json({ error: error.message });
