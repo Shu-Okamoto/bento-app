@@ -14,6 +14,11 @@ const NAV = [
 
 export default function AdminLayout() {
   const { logout } = useAuth();
+
+function handleLogout() {
+  logout();
+  window.location.href = '/admin/login';
+}
   return (
     <div style={{ display: 'flex', minHeight: '100dvh' }}>
       <aside style={{ width: 200, background: '#1a1a1a', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -34,7 +39,7 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <button onClick={logout} style={{ margin: 12, padding: '9px', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 8, color: '#aaa', fontSize: 13, cursor: 'pointer' }}>
+        <button onClick={handleLogout} style={{ margin: 12, padding: '9px', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 8, color: '#aaa', fontSize: 13, cursor: 'pointer' }}>
           ログアウト
         </button>
       </aside>
