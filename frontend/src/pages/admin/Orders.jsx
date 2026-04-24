@@ -34,7 +34,7 @@ export default function AdminOrders() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f5f4f0' }}>
-              {['事業所','所属','氏名','商品','オプション','個数','金額','状態','操作'].map(h => (
+              {['事業所','所属','氏名','商品','オプション','備考','個数','金額','状態','操作'].map(h => (
                 <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#555', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -47,6 +47,7 @@ export default function AdminOrders() {
                 <td style={{ padding: '10px 12px', fontWeight: 500 }}>{o.members?.name}</td>
                 <td style={{ padding: '10px 12px' }}>{o.products?.name}</td>
                 <td style={{ padding: '10px 12px', color: '#888' }}>{o.order_options?.map(x=>x.name).join('・')||'—'}</td>
+                <td style={{ padding: '10px 12px', color: '#854F0B', fontSize: 12, maxWidth: 180 }}>{o.note || '—'}</td>
                 <td style={{ padding: '10px 12px' }}>{o.quantity}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500 }}>¥{o.total_price?.toLocaleString()}</td>
                 <td style={{ padding: '10px 12px' }}>

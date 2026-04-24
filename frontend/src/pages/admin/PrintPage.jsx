@@ -68,6 +68,7 @@ export default function PrintPage() {
                     <th style={{ padding: '7px 10px', textAlign: 'left', fontSize: 11 }}>氏名</th>
                     <th style={{ padding: '7px 10px', textAlign: 'left', fontSize: 11 }}>商品名</th>
                     <th style={{ padding: '7px 10px', textAlign: 'left', fontSize: 11 }}>オプション</th>
+                    <th style={{ padding: '7px 10px', textAlign: 'left', fontSize: 11 }}>備考</th>
                     <th style={{ padding: '7px 10px', textAlign: 'right', fontSize: 11 }}>個数</th>
                     <th style={{ padding: '7px 10px', textAlign: 'right', fontSize: 11 }}>金額</th>
                     <th style={{ padding: '7px 10px', textAlign: 'center', fontSize: 11 }}>状態</th>
@@ -79,7 +80,7 @@ export default function PrintPage() {
                     const dAmt = rows.reduce((s,o)=>s+o.total_price,0);
                     return [
                       <tr key={`dept-${dept}`} style={{ background: '#f0efe8' }}>
-                        <td colSpan={8} style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#555' }}>
+                        <td colSpan={9} style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#555' }}>
                           {dept}（{dQty}個 / ¥{dAmt.toLocaleString()}）
                         </td>
                       </tr>,
@@ -92,6 +93,7 @@ export default function PrintPage() {
                           <td style={{ padding: '8px 10px', fontWeight: 600 }}>{o.members?.name}</td>
                           <td style={{ padding: '8px 10px' }}>{o.products?.name}</td>
                           <td style={{ padding: '8px 10px', color: '#777' }}>{o.order_options?.map(x=>x.name).join('・')||'—'}</td>
+                          <td style={{ padding: '8px 10px', color: '#854F0B', fontSize: 11, maxWidth: 140 }}>{o.note || '—'}</td>
                           <td style={{ padding: '8px 10px', textAlign: 'right' }}>{o.quantity}</td>
                           <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>¥{o.total_price?.toLocaleString()}</td>
                           <td style={{ padding: '8px 10px', textAlign: 'center' }}>
@@ -102,7 +104,7 @@ export default function PrintPage() {
                         </tr>
                       )),
                       <tr key={`subtotal-${dept}`} style={{ background: '#e8f5ee', borderTop: '1px solid #9FE1CB' }}>
-                        <td colSpan={5} style={{ padding: '6px 10px', textAlign: 'right', fontSize: 12, color: '#0F6E56', fontWeight: 600 }}>{dept} 小計</td>
+                        <td colSpan={6} style={{ padding: '6px 10px', textAlign: 'right', fontSize: 12, color: '#0F6E56', fontWeight: 600 }}>{dept} 小計</td>
                         <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#0F6E56' }}>{dQty}</td>
                         <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#0F6E56' }}>¥{dAmt.toLocaleString()}</td>
                         <td />

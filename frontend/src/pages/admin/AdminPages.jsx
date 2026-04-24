@@ -57,7 +57,7 @@ export function Products() {
   const [products, setProducts] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name:'', price:'', image_url:'', is_active:true, available_days:[0,1,2,3,4,5,6] });
+  const [form, setForm] = useState({ name:'', price:'', image_url:'', is_active:true, available_days:[0,1,2,3,4,5,6], show_for_office:true, show_for_free:true });
   const [opts, setOpts] = useState([]);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.type==='checkbox'?e.target.checked:e.target.value }));
 
@@ -73,13 +73,13 @@ export function Products() {
   useEffect(() => { api.get('/products/all').then(setProducts); }, []);
 
   function startEdit(p) {
-    setForm({ name:p.name, price:p.price, image_url:p.image_url||'', is_active:p.is_active, available_days:p.available_days||[0,1,2,3,4,5,6] });
+    setForm({ name:p.name, price:p.price, image_url:p.image_url||'', is_active:p.is_active, available_days:p.available_days||[0,1,2,3,4,5,6], show_for_office:p.show_for_office!==false, show_for_free:p.show_for_free!==false });
     setOpts(p.product_options || []);
     setEditing(p.id); setShow(true);
   }
 
   async function save() {
-    const body = { ...form, price: Number(form.price), options: opts, available_days: form.available_days };
+    const body = { ...form, price: Number(form.price), options: opts, available_days: form.available_days, show_for_office: form.show_for_office, show_for_free: form.show_for_free };
     if (editing) {
       const d = await api.put(`/products/${editing}`, body);
       setProducts(prev => prev.map(p => p.id===editing ? {...d, product_options:opts} : p));
@@ -87,7 +87,7 @@ export function Products() {
       const d = await api.post('/products', body);
       setProducts(prev => [...prev, {...d, product_options:opts}]);
     }
-    setShow(false); setEditing(null); setForm({name:'',price:'',image_url:'',is_active:true}); setOpts([]);
+    setShow(false); setEditing(null); setForm({name:'',price:'',image_url:'',is_active:true,available_days:[0,1,2,3,4,5,6],show_for_office:true,show_for_free:true}); setOpts([]);
   }
 
   async function del(id) {
@@ -100,7 +100,7 @@ export function Products() {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h1 style={{ fontSize:20, fontWeight:700 }}>商品管理</h1>
-        <button className="btn btn-primary" onClick={() => { setShow(true); setEditing(null); setForm({name:'',price:'',image_url:'',is_active:true}); setOpts([]); }}>＋ 商品を追加</button>
+        <button className="btn btn-primary" onClick={() => { setShow(true); setEditing(null); setForm({name:'',price:'',image_url:'',is_active:true,available_days:[0,1,2,3,4,5,6],show_for_office:true,show_for_free:true}); setOpts([]); }}>＋ 商品を追加</button>
       </div>
 
       {show && (
@@ -150,10 +150,13 @@ export function Products() {
                 {p.product_options.map(o => `${o.name}+¥${o.price}`).join('　')}
               </div>
             )}
-            <div style={{ fontSize:11, color:'#1D9E75', marginBottom:10 }}>
+            <div style={{ fontSize:11, color:'#1D9E75', marginBottom:4 }}>
               {p.available_days && p.available_days.length < 7
                 ? `提供曜日：${p.available_days.map(d=>DAYS[d]).join('・')}`
                 : '毎日提供'}
+            </div>
+            <div style={{ fontSize:11, color:'#666', marginBottom:10 }}>
+              表示：{[p.show_for_office!==false && '事業所', p.show_for_free!==false && 'フリー'].filter(Boolean).join('・') || '非表示'}
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button className="btn btn-secondary" style={{ flex:1, fontSize:12, padding:'6px' }} onClick={() => startEdit(p)}>編集</button>
