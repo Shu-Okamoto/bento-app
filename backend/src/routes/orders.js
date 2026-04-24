@@ -148,6 +148,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
 
+  // フリー会員は編集後も3000円以上必須
+  if (req.user.member_type === 'free' && total_price < 3000) {
+    return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
+  }
+
   const { data, error } = await supabase.from('orders')
     .update({ product_id, quantity, delivery_date, total_price, note: note || null })
     .eq('id', req.params.id).select().single();
