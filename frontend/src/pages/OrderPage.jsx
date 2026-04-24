@@ -18,7 +18,7 @@ export default function OrderPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadProducts(date); }, [date]);
-  useEffect(() => { if (date) checkDeadline(date); }, [date]);
+  useEffect(() => { if (date) checkDeadline(date, true); }, [date]);
 
   async function loadProducts(d) {
     const data = await api.get(`/products?delivery_date=${d}`);
@@ -29,10 +29,14 @@ export default function OrderPage() {
     }
   }
 
-  async function checkDeadline(d) {
+  async function checkDeadline(d, silent = false) {
     try {
       const result = await api.get(`/orders/deadline-check?delivery_date=${d}`);
       setDeadlineInfo(result);
+      // トーストは silent=false のときだけ（注文ボタン押下時など）
+      if (!result.allowed && !silent) {
+        showToast(result.reason, 'warn');
+      }
     } catch {
       setDeadlineInfo({ allowed: false, reason: '日付の確認に失敗しました' });
     }
@@ -52,7 +56,10 @@ export default function OrderPage() {
 
   async function handleOrder() {
     if (!selected) return showToast('商品を選んでください', 'warn');
-    if (!deadlineInfo?.allowed) return showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
+    if (!deadlineInfo?.allowed) {
+      showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
+      return;
+    }
     if (freeMinNotMet) return showToast(`合計3,000円以上から注文できます（現在：¥${total.toLocaleString()}）`, 'warn');
     setLoading(true);
     try {
