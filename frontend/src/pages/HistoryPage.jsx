@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import { parseDate, formatDateJa } from '../utils/date';
 
 export default function HistoryPage() {
+  const { user } = useAuth();
+  const isFree = user?.member_type === 'free';
   const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(null);
   const [products, setProducts] = useState([]);
@@ -48,6 +51,18 @@ export default function HistoryPage() {
   }
 
   async function saveEdit(orderId) {
+    // フリー会員の3000円チェック（フロントでも事前確認）
+    if (isFree) {
+      const prod = products.find(p => p.id === editForm.product_id);
+      if (prod) {
+        const optTotal = editForm.options.reduce((s, o) => s + (o.price || 0), 0);
+        const total = (prod.price + optTotal) * editForm.quantity;
+        if (total < 3000) {
+          setMsg(`⚠ フリー会員は合計3,000円以上から注文できます（現在：¥${total.toLocaleString()}）`);
+          return;
+        }
+      }
+    }
     setLoading(true); setMsg('');
     try {
       await api.put(`/orders/${orderId}`, editForm);
@@ -205,6 +220,18 @@ export default function HistoryPage() {
                     maxLength={200}
                   />
                 </div>
+                {(() => {
+                  const prod = products.find(p => p.id === editForm.product_id);
+                  if (!prod) return null;
+                  const optTotal = editForm.options.reduce((s, op) => s + (op.price || 0), 0);
+                  const total = (prod.price + optTotal) * editForm.quantity;
+                  const shortage = 3000 - total;
+                  return isFree && shortage > 0 ? (
+                    <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#854F0B', marginTop:8 }}>
+                      ⚠ あと¥{shortage.toLocaleString()}で注文できます（合計：¥{total.toLocaleString()}）
+                    </div>
+                  ) : null;
+                })()}
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(o.id)} disabled={loading}>
                     {loading ? '保存中...' : '変更を保存'}
