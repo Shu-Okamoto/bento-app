@@ -42,4 +42,15 @@ router.get('/slug/:slug', async (req, res) => {
   res.json(data);
 });
 
+// サブドメインから事業所情報を自動取得（フロントエンド起動時に呼ぶ）
+router.get('/current', async (req, res) => {
+  const slug = req.officeSlug;
+  if (!slug) return res.json({ slug: null, name: null });
+
+  const { data, error } = await supabase
+    .from('offices').select('id, name, slug').eq('slug', slug).single();
+  if (error) return res.status(404).json({ error: '事業所が見つかりません' });
+  res.json(data);
+});
+
 module.exports = router;
