@@ -1,10 +1,29 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const officeMiddleware = require('./middleware/office');
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+// CORS: メインドメインとワイルドカードサブドメインを許可
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  /\.order\.satonoaji-mikawa\.net$/,
+  /\.order\.satonoaji-mikawa\.co\.jp$/,
+  /localhost/,
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowed = allowedOrigins.some(o =>
+      typeof o === 'string' ? o === origin : o.test(origin)
+    );
+    callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+  },
+  credentials: true
+}));
 app.use(express.json());
+app.use(officeMiddleware);
 
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/offices',  require('./routes/offices'));
