@@ -6,7 +6,7 @@ export default function HistoryPage() {
   const [orders, setOrders] = useState([]);
   const [editing, setEditing] = useState(null);
   const [products, setProducts] = useState([]);
-  const [editForm, setEditForm] = useState({ product_id: '', quantity: 1, delivery_date: '', options: [] });
+  const [editForm, setEditForm] = useState({ product_id: '', quantity: 1, delivery_date: '', options: [], note: '' });
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +32,8 @@ export default function HistoryPage() {
       product_id: order.product_id,
       quantity: order.quantity,
       delivery_date: order.delivery_date,
-      options: order.order_options || []
+      options: order.order_options || [],
+      note: order.note || ''
     });
     setMsg('');
   }
@@ -99,6 +100,11 @@ export default function HistoryPage() {
                   {o.delivery_date} × {o.quantity}個
                   {o.order_options?.length > 0 && `　${o.order_options.map(x => x.name).join('・')}`}
                 </div>
+                {o.note && (
+                  <div style={{ fontSize: 12, color: '#854F0B', marginTop: 4, background: '#fff8ee', padding: '4px 8px', borderRadius: 6, border: '1px solid #FAC775' }}>
+                    備考: {o.note}
+                  </div>
+                )}
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1D9E75', marginTop: 4 }}>
                   ¥{o.total_price?.toLocaleString()}
                 </div>
@@ -188,6 +194,17 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
+                <div className="form-group" style={{ marginTop: 10 }}>
+                  <label>備考（任意）</label>
+                  <textarea
+                    value={editForm.note}
+                    onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))}
+                    placeholder="例：お米少なめ、アレルギーあり など"
+                    rows={2}
+                    style={{ padding: '9px 12px', border: '1px solid #e0dfd8', borderRadius: 8, background: 'white', outline: 'none', resize: 'vertical', fontSize: 14 }}
+                    maxLength={200}
+                  />
+                </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => saveEdit(o.id)} disabled={loading}>
                     {loading ? '保存中...' : '変更を保存'}

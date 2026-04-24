@@ -11,6 +11,7 @@ export default function OrderPage() {
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [selectedOpts, setSelectedOpts] = useState([]);
+  const [note, setNote] = useState('');
   const [qty, setQty] = useState(1);
   const [date, setDate] = useState(tomorrowJST());
   const [deadlineInfo, setDeadlineInfo] = useState(null);
@@ -61,9 +62,9 @@ export default function OrderPage() {
     if (freeMinNotMet) return setMsg('フリー会員は合計3,000円以上から注文できます');
     setLoading(true); setMsg('');
     try {
-      await api.post('/orders', { product_id: selected.id, quantity: qty, delivery_date: date, options: selectedOpts });
+      await api.post('/orders', { product_id: selected.id, quantity: qty, delivery_date: date, options: selectedOpts, note });
       setMsg('✓ 注文が完了しました！');
-      setSelectedOpts([]); setQty(1);
+      setSelectedOpts([]); setQty(1); setNote('');
     } catch(err) {
       setMsg('⚠ ' + err.message);
     } finally { setLoading(false); }
@@ -161,6 +162,17 @@ export default function OrderPage() {
           </p>
         )}
 
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <label>備考（任意）</label>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="例：お米少なめ、アレルギーあり など"
+            rows={2}
+            style={{ padding: '9px 12px', border: '1px solid #e0dfd8', borderRadius: 8, background: 'white', outline: 'none', resize: 'vertical', fontSize: 14 }}
+            maxLength={200}
+          />
+        </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={loading || !selected || !deadlineInfo?.allowed || freeMinNotMet}>
           {loading ? '送信中...' : '注文を確定する'}
         </button>
