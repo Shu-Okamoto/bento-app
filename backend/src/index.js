@@ -4,22 +4,10 @@ const cors = require('cors');
 const officeMiddleware = require('./middleware/office');
 const app = express();
 
-// CORS: すべての許可オリジンを列挙
-const allowedOrigins = [
-  process.env.FRONTEND_URL,                        // Vercel URL
-  'https://order.satonoaji-mikawa.net',            // カスタムドメイン
-
-];
-
+// CORS: 全オリジン許可（開発・移行期間中）
+// 本番安定後に特定ドメインのみに絞ること
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const allowed = allowedOrigins.some(o =>
-      typeof o === 'string' ? o === origin : o.test(origin)
-    );
-    console.log(`CORS check: ${origin} → ${allowed ? 'OK' : 'BLOCKED'}`);
-    callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
-  },
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
