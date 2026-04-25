@@ -8,15 +8,15 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
-     manifest: {
-      name: 'みかわ弁当注文アプリ',
-      short_name: 'みかわ弁当',
-      description: '里の味 みかわ 弁当注文システム',
-      theme_color: '#1D9E75',
-      background_color: '#ffffff',
-      display: 'standalone',
-      start_url: '.',
-      scope: '/',
+      manifest: {
+        name: 'みかわ弁当注文アプリ',
+        short_name: '弁当注文',
+        description: '里の味みかわ 弁当注文システム',
+        theme_color: '#1D9E75',
+        background_color: '#FBF7EF',
+        display: 'standalone',
+        start_url: '/',
+        scope: '/',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
