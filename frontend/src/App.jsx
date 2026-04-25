@@ -20,14 +20,24 @@ import { Dashboard as AdminDashboard, Orders as AdminOrders, Products as AdminPr
 // 会員ルートのガード
 function PrivateRoute({ children, role }) {
   const { user, loading } = useAuth();
-  const { office } = useOffice();
-  if (loading) return null;
+  const { office, loading: officeLoading } = useOffice();
+
+  // 両方のローディングが完了するまで待つ
+  if (loading || officeLoading) return null;
+
   if (!user) {
-    // localStorageのoffice_slugを優先して正しいログイン画面へリダイレクト
+    // localStorage の office_slug を最優先で使用
+    // PWAホーム画面から起動したとき office?.slug は null になるが
+    // localStorage には前回ログイン時の slug が保存されている
     const savedSlug = localStorage.getItem('office_slug');
-    const officeSlug = office?.slug || savedSlug;
+    const officeSlug = savedSlug || office?.slug;
+
+    console.log('PrivateRoute redirect → officeSlug:', officeSlug);
+
     if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
-    if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
+    if (officeSlug && officeSlug !== 'free') {
+      return <Navigate to={`/o/${officeSlug}/login`} replace />;
+    }
     return <Navigate to="/login" replace />;
   }
   if (role && user.role !== role) return <Navigate to="/" replace />;
