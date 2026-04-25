@@ -4,12 +4,14 @@ const cors = require('cors');
 const officeMiddleware = require('./middleware/office');
 const app = express();
 
-// CORS: メインドメインとワイルドカードサブドメインを許可
+// CORS: すべての許可オリジンを列挙
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  /\.order\.satonoaji-mikawa\.net$/,
-  /\.order\.satonoaji-mikawa\.co\.jp$/,
-  /localhost/,
+  process.env.FRONTEND_URL,                        // Vercel URL
+  'https://order.satonoaji-mikawa.net',            // カスタムドメイン
+  'https://www.order.satonoaji-mikawa.net',
+  /https:\/\/[a-z0-9-]+\.order\.satonoaji-mikawa\.net$/,  // 事業所サブドメイン
+  /https:\/\/[a-z0-9-]+\.order\.satonoaji-mikawa\.co\.jp$/,
+  /http:\/\/localhost/,
 ];
 
 app.use(cors({
@@ -18,6 +20,7 @@ app.use(cors({
     const allowed = allowedOrigins.some(o =>
       typeof o === 'string' ? o === origin : o.test(origin)
     );
+    console.log(`CORS check: ${origin} → ${allowed ? 'OK' : 'BLOCKED'}`);
     callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
   },
   credentials: true
