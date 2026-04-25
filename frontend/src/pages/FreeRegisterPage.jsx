@@ -42,7 +42,7 @@ export default function FreeRegisterPage() {
           </div>
           <div className="form-group">
             <label>電話番号 *</label>
-            <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" required type="tel" />
+            <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" required type="text" inputMode="tel" />
           </div>
           <div className="form-group">
             <label>住所・お届け先</label>

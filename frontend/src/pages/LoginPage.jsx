@@ -39,7 +39,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>電話番号</label>
-            <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" type="tel" required />
+            <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" type="text" inputMode="tel" required />
           </div>
           <div className="form-group">
             <label>パスワード</label>
