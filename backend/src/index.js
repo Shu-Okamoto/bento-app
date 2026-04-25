@@ -8,10 +8,7 @@ const app = express();
 const allowedOrigins = [
   process.env.FRONTEND_URL,                        // Vercel URL
   'https://order.satonoaji-mikawa.net',            // カスタムドメイン
-  'https://www.order.satonoaji-mikawa.net',
-  /https:\/\/[a-z0-9-]+\.order\.satonoaji-mikawa\.net$/,  // 事業所サブドメイン
-  /https:\/\/[a-z0-9-]+\.order\.satonoaji-mikawa\.co\.jp$/,
-  /http:\/\/localhost/,
+
 ];
 
 app.use(cors({
