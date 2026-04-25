@@ -23,10 +23,11 @@ function PrivateRoute({ children, role }) {
   const { office } = useOffice();
   if (loading) return null;
   if (!user) {
-    // 未ログイン → 適切なログイン画面へ
-    const slug = office?.slug;
-    if (slug && slug !== 'free') return <Navigate to={`/login`} replace />;
-    if (slug === 'free') return <Navigate to="/free/login" replace />;
+    // localStorageのoffice_slugを優先して正しいログイン画面へリダイレクト
+    const savedSlug = localStorage.getItem('office_slug');
+    const officeSlug = office?.slug || savedSlug;
+    if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
+    if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
     return <Navigate to="/login" replace />;
   }
   if (role && user.role !== role) return <Navigate to="/" replace />;
