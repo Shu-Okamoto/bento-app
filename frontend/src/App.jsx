@@ -95,10 +95,12 @@ export default function App() {
               {/* フリー会員 */}
               <Route path="/free/register" element={<FreeRegisterPage />} />
               <Route path="/free/login"    element={<FreeLoginPage />} />
-              <Route path="/free/home"     element={<MemberRoute><MemberLayout slug="free" /></MemberRoute>}>
-                <Route index element={<OrderPage />} />
+              <Route path="/free" element={<MemberRoute><MemberLayout /></MemberRoute>}>
+                <Route path="home"    element={<OrderPage />} />
+                <Route path="history" element={<HistoryPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route index element={<Navigate to="/free/home" replace />} />
               </Route>
-              <Route path="/free" element={<Navigate to="/free/home" replace />} />
 
               {/* 事業所会員（/o/:slug/ スコープ） */}
               <Route path="/o/:slug" element={<OfficeScope />}>
