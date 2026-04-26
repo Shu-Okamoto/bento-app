@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 
 export default function MemberLayout() {
   const { user, logout } = useAuth();
-  const { slug } = useParams();
-  const officeSlug = slug || localStorage.getItem('office_slug');
+  const { slug: paramSlug } = useParams();
+  const savedSlug = localStorage.getItem('office_slug');
+  const officeSlug = paramSlug || savedSlug;
 
   function handleLogout() {
     logout();
@@ -18,7 +19,9 @@ export default function MemberLayout() {
     }
   }
 
-  const base = officeSlug === 'free' ? '/free' : `/o/${officeSlug}`;
+  // /free/xxx か /o/:slug/xxx かを判定
+  const isFree = officeSlug === 'free' || window.location.pathname.startsWith('/free');
+  const base = isFree ? '/free' : `/o/${officeSlug}`;
 
   const NAV = [
     { to: `${base}/home`,    label: '注文',       icon: '🍱' },
