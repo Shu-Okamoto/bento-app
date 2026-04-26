@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OfficeProvider, useOffice } from './context/OfficeContext';
@@ -50,13 +50,12 @@ function MemberRoute({ children }) {
 }
 
 // 事業所スコープのレイアウト（動的マニフェスト注入）
-function OfficeScope({ children }) {
+function OfficeScope() {
   const { slug } = useParams();
   const apiBase = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     if (!slug) return;
-    // 動的マニフェストを設定
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
       link = document.createElement('link');
@@ -64,14 +63,13 @@ function OfficeScope({ children }) {
       document.head.appendChild(link);
     }
     link.href = `${apiBase}/api/pwa/o/${slug}/manifest.json`;
-
     return () => {
-      // クリーンアップ：デフォルトマニフェストに戻す
       link.href = '/manifest.webmanifest';
     };
-  }, [slug]);
+  }, [slug, apiBase]);
 
-  return children;
+  // Outlet で子ルートを描画（レイアウトとして機能）
+  return <Outlet />;
 }
 
 export default function App() {
@@ -103,7 +101,7 @@ export default function App() {
               <Route path="/free" element={<Navigate to="/free/home" replace />} />
 
               {/* 事業所会員（/o/:slug/ スコープ） */}
-              <Route path="/o/:slug" element={<OfficeScope><div /></OfficeScope>}>
+              <Route path="/o/:slug" element={<OfficeScope />}>
                 <Route path="register" element={<RegisterPage />} />
                 <Route path="login"    element={<LoginPage />} />
                 <Route element={<MemberRoute><MemberLayout /></MemberRoute>}>
@@ -111,7 +109,6 @@ export default function App() {
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
-                {/* /o/:slug/ → /o/:slug/home にリダイレクト */}
                 <Route index element={<SlugHomeRedirect />} />
               </Route>
 
