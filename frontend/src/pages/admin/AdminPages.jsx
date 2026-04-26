@@ -428,8 +428,16 @@ export function Settings() {
           </label>
           {notify.email_enabled && (
             <div className="form-group" style={{ marginBottom:0 }}>
-              <label>通知先メールアドレス</label>
-              <input value={notify.email_address} onChange={e=>setNotify(n=>({...n,email_address:e.target.value}))} type="email" placeholder="admin@example.com" />
+              <label>通知先メールアドレス（複数の場合はカンマ区切り）</label>
+              <input
+                value={notify.email_address}
+                onChange={e=>setNotify(n=>({...n,email_address:e.target.value}))}
+                type="text"
+                placeholder="admin@example.com, staff@example.com"
+              />
+              <div style={{ fontSize:11, color:'#999', marginTop:4 }}>
+                例：admin@gmail.com, manager@gmail.com
+              </div>
             </div>
           )}
         </div>
