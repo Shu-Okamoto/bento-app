@@ -20,6 +20,7 @@ app.use('/api/orders',   require('./routes/orders'));
 app.use('/api/members',  require('./routes/members'));
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/holidays', require('./routes/holidays'));
+app.use('/api/line',     require('./routes/line'));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
