@@ -357,11 +357,28 @@ export function Settings() {
   const [settings, setSettings] = useState({ closed_sat:true, closed_sun:true, closed_hol:true, extra_dates:[] });
   const [extra, setExtra] = useState('');
   const [saved, setSaved] = useState(false);
-  useEffect(() => { api.get('/holidays').then(setSettings); }, []);
+  const [notify, setNotify] = useState({ email_enabled:false, email_address:'', line_enabled:false });
+  const [lineStatus, setLineStatus] = useState({ line_connected:false });
+  const [notifySaved, setNotifySaved] = useState(false);
+
+  useEffect(() => {
+    api.get('/holidays').then(setSettings);
+    api.get('/line/status').then(setLineStatus).catch(()=>{});
+    api.get('/line/settings').then(d => setNotify({
+      email_enabled: d.email_enabled||false,
+      email_address: d.email_address||'',
+      line_enabled: d.line_enabled||false,
+    })).catch(()=>{});
+  }, []);
 
   async function save() {
     await api.put('/holidays', settings);
     setSaved(true); setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function saveNotify() {
+    await api.put('/line/settings', notify);
+    setNotifySaved(true); setTimeout(() => setNotifySaved(false), 2000);
   }
 
   function addExtra() {
@@ -371,9 +388,58 @@ export function Settings() {
     }
   }
 
+  // LINE公式アカウントのQRコードURL（LINE Developersから取得したチャンネルID）
+  const lineAddUrl = `https://line.me/R/ti/p/@${process.env.REACT_APP_LINE_BOT_ID || ''}`;
+
   return (
     <div>
       <h1 style={{ fontSize:20, fontWeight:700, marginBottom:20 }}>設定</h1>
+
+      {/* 通知設定 */}
+      <div className="card" style={{ maxWidth:560, marginBottom:16 }}>
+        <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>🔔 通知設定</h2>
+
+        {/* LINE通知 */}
+        <div style={{ marginBottom:16, paddingBottom:16, borderBottom:'1px solid #f0efe8' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:14, fontWeight:600 }}>
+              <input type="checkbox" checked={notify.line_enabled} onChange={e=>setNotify(n=>({...n,line_enabled:e.target.checked}))} style={{ accentColor:'#1D9E75', width:18, height:18 }} />
+              LINE通知
+            </label>
+            <span style={{ fontSize:12, padding:'2px 10px', borderRadius:99, background: lineStatus.line_connected?'#e8f5ee':'#f0efe8', color: lineStatus.line_connected?'#0F6E56':'#666' }}>
+              {lineStatus.line_connected ? '✓ 接続済み' : '未接続'}
+            </span>
+          </div>
+          {!lineStatus.line_connected && (
+            <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#633806' }}>
+              <strong>LINE接続手順：</strong><br/>
+              1. LINE Developersでチャンネルの「Messaging API」タブを開く<br/>
+              2. 「QR code」からLINE公式アカウントを友だち追加する<br/>
+              3. 友だち追加すると自動的に接続されます
+            </div>
+          )}
+        </div>
+
+        {/* メール通知 */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:14, fontWeight:600, marginBottom:10 }}>
+            <input type="checkbox" checked={notify.email_enabled} onChange={e=>setNotify(n=>({...n,email_enabled:e.target.checked}))} style={{ accentColor:'#1D9E75', width:18, height:18 }} />
+            メール通知
+          </label>
+          {notify.email_enabled && (
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label>通知先メールアドレス</label>
+              <input value={notify.email_address} onChange={e=>setNotify(n=>({...n,email_address:e.target.value}))} type="email" placeholder="admin@example.com" />
+            </div>
+          )}
+        </div>
+
+        <button className="btn btn-primary" onClick={saveNotify}>
+          {notifySaved ? '✓ 保存しました' : '通知設定を保存'}
+        </button>
+      </div>
+
+      {/* 休日設定 */}
       <div className="card" style={{ maxWidth:560 }}>
         <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>休日・締切設定</h2>
         <p style={{ fontSize:13, color:'#666', marginBottom:14 }}>チェックした日は注文不可・締切計算から除外されます</p>
