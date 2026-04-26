@@ -49,6 +49,22 @@ function MemberRoute({ children }) {
   return children;
 }
 
+// フリー会員スコープ（マニフェスト注入）
+function FreeScope() {
+  const apiBase = import.meta.env.VITE_API_URL || '';
+  useEffect(() => {
+    let link = document.querySelector('link[rel="manifest"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    link.href = `${apiBase}/api/pwa/free/manifest.json`;
+    return () => { link.href = '/manifest.webmanifest'; };
+  }, []);
+  return <Outlet />;
+}
+
 // 事業所スコープのレイアウト（動的マニフェスト注入）
 function OfficeScope() {
   const { slug } = useParams();
@@ -95,10 +111,12 @@ export default function App() {
               {/* フリー会員 */}
               <Route path="/free/register" element={<FreeRegisterPage />} />
               <Route path="/free/login"    element={<FreeLoginPage />} />
-              <Route path="/free" element={<MemberRoute><MemberLayout /></MemberRoute>}>
-                <Route path="home"    element={<OrderPage />} />
-                <Route path="history" element={<HistoryPage />} />
-                <Route path="profile" element={<ProfilePage />} />
+              <Route path="/free" element={<FreeScope />}>
+                <Route element={<MemberRoute><MemberLayout /></MemberRoute>}>
+                  <Route path="home"    element={<OrderPage />} />
+                  <Route path="history" element={<HistoryPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                </Route>
                 <Route index element={<Navigate to="/free/home" replace />} />
               </Route>
 
@@ -138,17 +156,31 @@ function SlugHomeRedirect() {
 // ルートアクセス時の振り分け
 function RootRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+
+  // ローディング中は何も表示しない（フラッシュ防止）
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
+      <div style={{ textAlign:'center' }}>
+        <img src="/logo.JPG" alt="みかわ" style={{ width:80, marginBottom:12 }} />
+        <div style={{ fontSize:13, color:'#888' }}>読み込み中...</div>
+      </div>
+    </div>
+  );
 
   const savedSlug = localStorage.getItem('office_slug');
 
+  // ログイン済み
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   if (user?.role === 'member') {
     if (savedSlug === 'free') return <Navigate to="/free/home" replace />;
     if (savedSlug) return <Navigate to={`/o/${savedSlug}/home`} replace />;
+    return <Navigate to="/free/home" replace />;
   }
-  // 未ログイン
+
+  // 未ログイン → savedSlug から適切なログイン画面へ
   if (savedSlug === 'free') return <Navigate to="/free/login" replace />;
-  if (savedSlug) return <Navigate to={`/o/${savedSlug}/login`} replace />;
+  if (savedSlug && savedSlug !== 'free') return <Navigate to={`/o/${savedSlug}/login`} replace />;
+
+  // slugなし → 管理者ログイン
   return <Navigate to="/admin/login" replace />;
 }
