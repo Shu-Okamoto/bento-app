@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const { notifyNewOrder } = require('../utils/notify');
 const supabase = require('../utils/supabase');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
@@ -110,7 +111,8 @@ router.post('/', authMiddleware, async (req, res) => {
   const check = await checkDeadline(delivery_date);
   if (!check.allowed) return res.status(400).json({ error: check.reason });
 
-  const { data: product } = await supabase.from('products').select('price').eq('id', product_id).single();
+  const { data: product } = await supabase.from('products').select('price, name').eq('id', product_id).single();
+  const product_name = product?.name;
   if (!product) return res.status(404).json({ error: '商品が見つかりません' });
 
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
@@ -128,6 +130,24 @@ router.post('/', authMiddleware, async (req, res) => {
   if (options && options.length > 0) {
     await supabase.from('order_options').insert(options.map(o => ({ order_id: order.id, name: o.name, price: o.price })));
   }
+
+  // 注文通知（非同期・エラーがあっても注文は成功扱い）
+  try {
+    const { data: member } = await supabase.from('members').select('name').eq('id', req.user.id).single();
+    const { data: office } = await supabase.from('offices').select('name').eq('id', req.user.office_id).single();
+    await notifyNewOrder({
+      memberName: member?.name || '不明',
+      officeName: office?.name || '不明',
+      productName: product_name || '商品',
+      quantity,
+      deliveryDate: delivery_date,
+      note: note || '',
+      totalPrice: total_price,
+    });
+  } catch(e) {
+    console.error('Notify error:', e);
+  }
+
   res.json(order);
 });
 
