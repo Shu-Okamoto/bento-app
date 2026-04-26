@@ -17,8 +17,9 @@ export default function FreeRegisterPage() {
     setLoading(true); setError('');
     try {
       const { token, user } = await api.post('/auth/register/free', form);
+      localStorage.setItem('office_slug', 'free');
       login(token, user);
-      navigate('/');
+      navigate('/free/home', { replace: true });
     } catch(err) {
       setError(err.message);
     } finally { setLoading(false); }

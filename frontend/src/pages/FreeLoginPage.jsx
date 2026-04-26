@@ -18,7 +18,7 @@ export default function FreeLoginPage() {
       const { token, user } = await api.post('/auth/login/free', form);
       localStorage.setItem('office_slug', 'free');
       login(token, user);
-      navigate('/');
+      navigate('/free/home', { replace: true });
     } catch(err) {
       setError(err.message);
     } finally { setLoading(false); }

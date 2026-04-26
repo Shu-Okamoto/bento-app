@@ -24,7 +24,8 @@ export default function RegisterPage() {
       const { token, user } = await api.post('/auth/register', { office_slug: slug, ...form });
       if (slug) localStorage.setItem('office_slug', slug);
       login(token, user);
-      navigate('/');
+      if (slug) navigate(`/o/${slug}/home`, { replace: true });
+      else navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

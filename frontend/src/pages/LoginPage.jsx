@@ -23,7 +23,10 @@ export default function LoginPage() {
       const { token, user } = await api.post('/auth/login', { office_slug: slug, ...form });
       if (slug) localStorage.setItem('office_slug', slug);
       login(token, user);
-      navigate('/');
+      // 事業所スラグに応じた home へリダイレクト
+      if (slug === 'free') navigate('/free/home', { replace: true });
+      else if (slug) navigate(`/o/${slug}/home`, { replace: true });
+      else navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally { setLoading(false); }
