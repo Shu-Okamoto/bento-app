@@ -1,100 +1,77 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OfficeProvider, useOffice } from './context/OfficeContext';
 import { ToastProvider } from './components/Toast';
 
-import RegisterPage     from './pages/RegisterPage';
-import FreeRegisterPage from './pages/FreeRegisterPage';
-import LoginPage        from './pages/LoginPage';
-import FreeLoginPage    from './pages/FreeLoginPage';
-import AdminLoginPage   from './pages/AdminLoginPage';
-import OrderPage        from './pages/OrderPage';
-import HistoryPage      from './pages/HistoryPage';
-import ProfilePage      from './pages/ProfilePage';
-import MemberLayout     from './components/MemberLayout';
-import AdminLayout      from './components/AdminLayout';
+import RegisterPage      from './pages/RegisterPage';
+import FreeRegisterPage  from './pages/FreeRegisterPage';
+import LoginPage         from './pages/LoginPage';
+import FreeLoginPage     from './pages/FreeLoginPage';
+import AdminLoginPage    from './pages/AdminLoginPage';
+import OrderPage         from './pages/OrderPage';
+import HistoryPage       from './pages/HistoryPage';
+import ProfilePage       from './pages/ProfilePage';
+import MemberLayout      from './components/MemberLayout';
+import AdminLayout       from './components/AdminLayout';
 
-import { Dashboard as AdminDashboard, Orders as AdminOrders, Products as AdminProducts, Members as AdminMembers, Offices as AdminOffices, Billing as AdminBilling, Settings as AdminSettings, PrintPage } from './pages/admin/index.js';
+import {
+  Dashboard as AdminDashboard,
+  Orders    as AdminOrders,
+  Products  as AdminProducts,
+  Members   as AdminMembers,
+  Offices   as AdminOffices,
+  Billing   as AdminBilling,
+  Settings  as AdminSettings,
+  PrintPage
+} from './pages/admin/index.js';
 
-// 会員ルートのガード
-function PrivateRoute({ children, role }) {
+// 管理者ルートのガード
+function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-  const { office, loading: officeLoading } = useOffice();
-
-  // 両方のローディングが完了するまで待つ
-  if (loading || officeLoading) return null;
-
-  if (!user) {
-    // localStorage の office_slug を最優先で使用
-    // PWAホーム画面から起動したとき office?.slug は null になるが
-    // localStorage には前回ログイン時の slug が保存されている
-    const savedSlug = localStorage.getItem('office_slug');
-    const officeSlug = savedSlug || office?.slug;
-
-    console.log('PrivateRoute redirect → officeSlug:', officeSlug);
-
-    if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
-    if (officeSlug && officeSlug !== 'free') {
-      return <Navigate to={`/o/${officeSlug}/login`} replace />;
-    }
-    return <Navigate to="/login" replace />;
-  }
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (loading) return null;
+  if (!user || user.role !== 'admin') return <Navigate to="/admin/login" replace />;
   return children;
 }
 
-// サブドメイン対応のルートコンポーネント
-function AppRoutes() {
-  const { office, loading } = useOffice();
-
+// 会員ルートのガード（事業所スラグ対応）
+function MemberRoute({ children }) {
+  const { user, loading } = useAuth();
+  const { slug } = useParams();
   if (loading) return null;
+  if (!user || user.role !== 'member') {
+    const savedSlug = localStorage.getItem('office_slug');
+    const officeSlug = slug || savedSlug;
+    if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
+    if (officeSlug) return <Navigate to={`/o/${officeSlug}/login`} replace />;
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
-  const slug = office?.slug;
-  const isFreeSubdomain = slug === 'free';
-  const isAdminDomain = !slug;
-  const isOfficeDomain = slug && slug !== 'free';
+// 事業所スコープのレイアウト（動的マニフェスト注入）
+function OfficeScope({ children }) {
+  const { slug } = useParams();
+  const apiBase = import.meta.env.VITE_API_URL || '';
 
-  return (
-    <Routes>
-      {/* 管理者ルート */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin" element={<PrivateRoute role="admin"><AdminLayout /></PrivateRoute>}>
-        <Route index              element={<AdminDashboard />} />
-        <Route path="orders"     element={<AdminOrders />} />
-        <Route path="products"   element={<AdminProducts />} />
-        <Route path="members"    element={<AdminMembers />} />
-        <Route path="offices"    element={<AdminOffices />} />
-        <Route path="billing"    element={<AdminBilling />} />
-        <Route path="settings"   element={<AdminSettings />} />
-        <Route path="print"      element={<PrintPage />} />
-      </Route>
+  useEffect(() => {
+    if (!slug) return;
+    // 動的マニフェストを設定
+    let link = document.querySelector('link[rel="manifest"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    link.href = `${apiBase}/api/pwa/o/${slug}/manifest.json`;
 
-      {/* フリー会員ルート */}
-      <Route path="/free/register" element={<FreeRegisterPage />} />
-      <Route path="/free/login"    element={<FreeLoginPage />} />
+    return () => {
+      // クリーンアップ：デフォルトマニフェストに戻す
+      link.href = '/manifest.webmanifest';
+    };
+  }, [slug]);
 
-      {/* 事業所会員ルート（サブドメイン or パスベース両対応） */}
-      <Route path="/o/:slug/register" element={<RegisterPage />} />
-      <Route path="/o/:slug/login"    element={<LoginPage />} />
-      <Route path="/login"            element={<LoginPage />} />
-      <Route path="/register"         element={<RegisterPage />} />
-
-      {/* 会員メイン画面 */}
-      <Route path="/" element={<PrivateRoute role="member"><MemberLayout /></PrivateRoute>}>
-        <Route index          element={<OrderPage />} />
-        <Route path="history" element={<HistoryPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-      </Route>
-
-      {/* サブドメインのルート直打ちでログイン画面へ */}
-      <Route path="*" element={
-        isOfficeDomain ? <Navigate to="/login" replace /> :
-        isFreeSubdomain ? <Navigate to="/free/login" replace /> :
-        <Navigate to="/admin/login" replace />
-      } />
-    </Routes>
-  );
+  return children;
 }
 
 export default function App() {
@@ -103,10 +80,76 @@ export default function App() {
       <OfficeProvider>
         <ToastProvider>
           <BrowserRouter>
-            <AppRoutes />
+            <Routes>
+              {/* 管理者 */}
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+                <Route index              element={<AdminDashboard />} />
+                <Route path="orders"     element={<AdminOrders />} />
+                <Route path="products"   element={<AdminProducts />} />
+                <Route path="members"    element={<AdminMembers />} />
+                <Route path="offices"    element={<AdminOffices />} />
+                <Route path="billing"    element={<AdminBilling />} />
+                <Route path="settings"   element={<AdminSettings />} />
+                <Route path="print"      element={<PrintPage />} />
+              </Route>
+
+              {/* フリー会員 */}
+              <Route path="/free/register" element={<FreeRegisterPage />} />
+              <Route path="/free/login"    element={<FreeLoginPage />} />
+              <Route path="/free/home"     element={<MemberRoute><MemberLayout slug="free" /></MemberRoute>}>
+                <Route index element={<OrderPage />} />
+              </Route>
+              <Route path="/free" element={<Navigate to="/free/home" replace />} />
+
+              {/* 事業所会員（/o/:slug/ スコープ） */}
+              <Route path="/o/:slug" element={<OfficeScope><div /></OfficeScope>}>
+                <Route path="register" element={<RegisterPage />} />
+                <Route path="login"    element={<LoginPage />} />
+                <Route element={<MemberRoute><MemberLayout /></MemberRoute>}>
+                  <Route path="home"    element={<OrderPage />} />
+                  <Route path="history" element={<HistoryPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                </Route>
+                {/* /o/:slug/ → /o/:slug/home にリダイレクト */}
+                <Route index element={<SlugHomeRedirect />} />
+              </Route>
+
+              {/* 汎用ログイン（PWAホーム起動時のフォールバック） */}
+              <Route path="/login"    element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+
+              {/* ルートアクセス → savedSlug から適切な画面へ */}
+              <Route path="/" element={<RootRedirect />} />
+              <Route path="*" element={<RootRedirect />} />
+            </Routes>
           </BrowserRouter>
         </ToastProvider>
       </OfficeProvider>
     </AuthProvider>
   );
+}
+
+// /o/:slug/ → /o/:slug/home
+function SlugHomeRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={`/o/${slug}/home`} replace />;
+}
+
+// ルートアクセス時の振り分け
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+
+  const savedSlug = localStorage.getItem('office_slug');
+
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user?.role === 'member') {
+    if (savedSlug === 'free') return <Navigate to="/free/home" replace />;
+    if (savedSlug) return <Navigate to={`/o/${savedSlug}/home`} replace />;
+  }
+  // 未ログイン
+  if (savedSlug === 'free') return <Navigate to="/free/login" replace />;
+  if (savedSlug) return <Navigate to={`/o/${savedSlug}/login`} replace />;
+  return <Navigate to="/admin/login" replace />;
 }
