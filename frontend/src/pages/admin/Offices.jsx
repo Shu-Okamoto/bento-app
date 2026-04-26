@@ -4,7 +4,7 @@ import { api } from '../../utils/api';
 // ===== 事業所管理 =====
 export function Offices() {
   const [offices, setOffices] = useState([]);
-  const [form, setForm] = useState({ name:'', slug:'', address:'', phone:'', contact_name:'', email:'' });
+  const [form, setForm] = useState({ name:'', slug:'', short_name:'', address:'', phone:'', contact_name:'', email:'' });
   const [editing, setEditing] = useState(null);
   const [show, setShow] = useState(false);
   const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
@@ -19,11 +19,11 @@ export function Offices() {
       const d = await api.post('/offices', form);
       setOffices(prev => [d, ...prev]);
     }
-    setShow(false); setEditing(null); setForm({ name:'',slug:'',address:'',phone:'',contact_name:'',email:'' });
+    setShow(false); setEditing(null); setForm({ name:'',slug:'',short_name:'',address:'',phone:'',contact_name:'',email:'' });
   }
 
   function edit(o) {
-    setForm({ name:o.name,slug:o.slug,address:o.address||'',phone:o.phone||'',contact_name:o.contact_name||'',email:o.email||'' });
+    setForm({ name:o.name,slug:o.slug,short_name:o.short_name||'',address:o.address||'',phone:o.phone||'',contact_name:o.contact_name||'',email:o.email||'' });
     setEditing(o.id); setShow(true);
   }
 
@@ -46,7 +46,7 @@ export function Offices() {
         <div className="card" style={{ marginBottom:20 }}>
           <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>{editing ? '事業所を編集' : '事業所を追加'}</h2>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            {[['name','事業所名 *'],['slug','URL識別子 *（英数字・ハイフンのみ）'],['address','住所'],['phone','電話番号'],['contact_name','担当者名'],['email','メールアドレス']].map(([k,l]) => (
+            {[['name','事業所名 *'],['slug','URL識別子 *（英数字・ハイフンのみ）'],['short_name','アイコン表示名（例：山田製作所）'],['address','住所'],['phone','電話番号'],['contact_name','担当者名'],['email','メールアドレス']].map(([k,l]) => (
               <div className="form-group" key={k} style={{ marginBottom:0 }}>
                 <label>{l}</label>
                 <input value={form[k]} onChange={set(k)} placeholder={k==='slug'?'yamada-inc':''} />
