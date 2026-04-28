@@ -94,7 +94,7 @@ function OfficeScope() {
     const manifest = {
       name: `弁当注文 ${slug}`,
       short_name: slug,
-      start_url: `/o/${slug}`,
+      start_url: `/o/${slug}`/home,
       scope: `/o/${slug}`,
       display: "standalone",
       background_color: "#ffffff",
