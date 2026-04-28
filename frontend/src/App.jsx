@@ -91,15 +91,19 @@ function OfficeScope() {
   useEffect(() => {
     if (!slug) return;
 
-    const manifest = {
-      name: `弁当注文 ${slug}`,
-      short_name: slug,
-      start_url: `/o/${slug}`/home,
-      scope: `/o/${slug}`,
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: "#ffffff"
-    };
+const origin = window.location.origin;
+
+const manifest = {
+  name: `弁当注文 ${slug}`,
+  short_name: slug,
+
+  start_url: `${origin}/o/${slug}/home`,
+  scope: `${origin}/o/${slug}`,
+
+  display: "standalone",
+  background_color: "#ffffff",
+  theme_color: "#ffffff"
+};
 
     const blob = new Blob([JSON.stringify(manifest)], {
       type: "application/json"
