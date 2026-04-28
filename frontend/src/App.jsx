@@ -51,43 +51,80 @@ function MemberRoute({ children }) {
 
 // フリー会員スコープ（マニフェスト注入）
 function FreeScope() {
-  const apiBase = import.meta.env.VITE_API_URL || '';
   useEffect(() => {
+    const manifest = {
+      name: "弁当注文 フリー会員",
+      short_name: "free",
+      start_url: "/free",
+      scope: "/free",
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#ffffff"
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], {
+      type: "application/json"
+    });
+
+    const url = URL.createObjectURL(blob);
+
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
+      link = document.createElement("link");
+      link.rel = "manifest";
       document.head.appendChild(link);
     }
-    link.href = `${apiBase}/api/pwa/free/manifest.json`;
-    return () => { link.href = '/manifest.webmanifest'; };
+
+    link.href = url;
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
   }, []);
+
   return <Outlet />;
 }
 
-// 事業所スコープのレイアウト（動的マニフェスト注入）
 function OfficeScope() {
   const { slug } = useParams();
-  const apiBase = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     if (!slug) return;
+
+    const manifest = {
+      name: `弁当注文 ${slug}`,
+      short_name: slug,
+      start_url: `/o/${slug}`,
+      scope: `/o/${slug}`,
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#ffffff"
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], {
+      type: "application/json"
+    });
+
+    const url = URL.createObjectURL(blob);
+
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
+      link = document.createElement("link");
+      link.rel = "manifest";
       document.head.appendChild(link);
     }
-    link.href = `${apiBase}/api/pwa/o/${slug}/manifest.json`;
-    return () => {
-      link.href = '/manifest.webmanifest';
-    };
-  }, [slug, apiBase]);
 
-  // Outlet で子ルートを描画（レイアウトとして機能）
+    link.href = url;
+
+    // cleanup（メモリ解放）
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+
+  }, [slug]);
+
   return <Outlet />;
 }
-
 export default function App() {
   return (
     <AuthProvider>
