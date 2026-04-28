@@ -38,14 +38,31 @@ function AdminRoute({ children }) {
 function MemberRoute({ children }) {
   const { user, loading } = useAuth();
   const { slug } = useParams();
+  const path = window.location.pathname;
+
   if (loading) return null;
+
   if (!user || user.role !== 'member') {
+
+    // ★ ここ追加（最重要）
+    if (path.startsWith("/free")) {
+      return <Navigate to="/free/login" replace />;
+    }
+
     const savedSlug = localStorage.getItem('office_slug');
     const officeSlug = slug || savedSlug;
-    if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
-    if (officeSlug) return <Navigate to={`/o/${officeSlug}/login`} replace />;
+
+    if (officeSlug === 'free') {
+      return <Navigate to="/free/login" replace />;
+    }
+
+    if (officeSlug) {
+      return <Navigate to={`/o/${officeSlug}/login`} replace />;
+    }
+
     return <Navigate to="/login" replace />;
   }
+
   return children;
 }
 
