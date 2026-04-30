@@ -106,7 +106,11 @@ function OfficeScope() {
   const { slug } = useParams();
 
   useEffect(() => {
-    if (!slug) return;
+  if (!slug) return;
+
+  localStorage.setItem('office_slug', slug);
+
+}, [slug]);
 
 const origin = window.location.origin;
 
