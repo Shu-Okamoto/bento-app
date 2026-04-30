@@ -1,18 +1,6 @@
 {
   "routes": [
     {
-      "src": "/o/([^/]+)/manifest\\.json",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/o/$1/manifest.json"
-    },
-    {
-      "src": "/free/manifest\\.json",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/free/manifest.json"
-    },
-    {
-      "src": "/o/([^/]+)/icon-([0-9]+)\\.png",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/o/$1/icon-$2.png"
-    },
-    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
