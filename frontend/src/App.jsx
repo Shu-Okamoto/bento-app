@@ -106,25 +106,20 @@ function OfficeScope() {
   const { slug } = useParams();
 
   useEffect(() => {
-  if (!slug) return;
+    if (!slug) return;
 
-  localStorage.setItem('office_slug', slug);
+    // slug保存
+    localStorage.setItem('office_slug', slug);
 
-}, [slug]);
-
-const origin = window.location.origin;
-
-const manifest = {
-  name: `弁当注文 ${slug}`,
-  short_name: slug,
-
-  start_url: `${origin}/o/${slug}/home`,
-  scope: `${origin}/o/${slug}`,
-
-  display: "standalone",
-  background_color: "#ffffff",
-  theme_color: "#ffffff"
-};
+    const manifest = {
+      name: `弁当注文 ${slug}`,
+      short_name: slug,
+      start_url: `/o/${slug}/home`,
+      scope: `/o/${slug}`,
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#ffffff"
+    };
 
     const blob = new Blob([JSON.stringify(manifest)], {
       type: "application/json"
@@ -141,7 +136,6 @@ const manifest = {
 
     link.href = url;
 
-    // cleanup（メモリ解放）
     return () => {
       URL.revokeObjectURL(url);
     };
