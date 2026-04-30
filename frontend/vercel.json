@@ -1,12 +1,6 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|JPG))",
-      "destination": "/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
