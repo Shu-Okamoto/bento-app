@@ -38,118 +38,62 @@ function AdminRoute({ children }) {
 function MemberRoute({ children }) {
   const { user, loading } = useAuth();
   const { slug } = useParams();
-  const path = window.location.pathname;
-
   if (loading) return null;
-
   if (!user || user.role !== 'member') {
-
-    // ★ ここ追加（最重要）
-    if (path.startsWith("/free")) {
-      return <Navigate to="/free/login" replace />;
-    }
-
     const savedSlug = localStorage.getItem('office_slug');
     const officeSlug = slug || savedSlug;
-
-    if (officeSlug === 'free') {
-      return <Navigate to="/free/login" replace />;
-    }
-
-    if (officeSlug) {
-      return <Navigate to={`/o/${officeSlug}/login`} replace />;
-    }
-
+    if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
+    if (officeSlug) return <Navigate to={`/o/${officeSlug}/login`} replace />;
     return <Navigate to="/login" replace />;
   }
-
   return children;
 }
 
 // フリー会員スコープ（マニフェスト注入）
 function FreeScope() {
+  const apiBase = import.meta.env.VITE_API_URL || '';
   useEffect(() => {
-    const manifest = {
-      name: "弁当注文 フリー会員",
-      short_name: "free",
-      start_url: "/free",
-      scope: "/free",
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: "#ffffff"
-    };
-
-    const blob = new Blob([JSON.stringify(manifest)], {
-      type: "application/json"
-    });
-
-    const url = URL.createObjectURL(blob);
-
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
-      link = document.createElement("link");
-      link.rel = "manifest";
+      link = document.createElement('link');
+      link.rel = 'manifest';
       document.head.appendChild(link);
     }
-
-    link.href = url;
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    link.href = `${apiBase}/api/pwa/free/manifest.json`;
+    return () => { link.href = '/manifest.webmanifest'; };
   }, []);
-
   return <Outlet />;
 }
 
+// 事業所スコープのレイアウト（動的マニフェスト注入）
 function OfficeScope() {
   const { slug } = useParams();
+  const apiBase = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     if (!slug) return;
-
-    // slug保存
-    localStorage.setItem('office_slug', slug);
-
-    const manifest = {
-      name: `弁当注文 ${slug}`,
-      short_name: slug,
-      start_url: `/o/${slug}/home`,
-      scope: `/o/${slug}`,
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: "#ffffff"
-    };
-
-    const blob = new Blob([JSON.stringify(manifest)], {
-      type: "application/json"
-    });
-
-    const url = URL.createObjectURL(blob);
-
     let link = document.querySelector('link[rel="manifest"]');
     if (!link) {
-      link = document.createElement("link");
-      link.rel = "manifest";
+      link = document.createElement('link');
+      link.rel = 'manifest';
       document.head.appendChild(link);
     }
-
-    link.href = url;
-
+    link.href = `${apiBase}/api/pwa/o/${slug}/manifest.json`;
     return () => {
-      URL.revokeObjectURL(url);
+      link.href = '/manifest.webmanifest';
     };
+  }, [slug, apiBase]);
 
-  }, [slug]);
-
+  // Outlet で子ルートを描画（レイアウトとして機能）
   return <Outlet />;
 }
+
 export default function App() {
   return (
     <AuthProvider>
       <OfficeProvider>
-        <ToastProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <ToastProvider>
             <Routes>
               {/* 管理者 */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -196,8 +140,8 @@ export default function App() {
               <Route path="/" element={<RootRedirect />} />
               <Route path="*" element={<RootRedirect />} />
             </Routes>
-          </BrowserRouter>
-        </ToastProvider>
+          </ToastProvider>
+        </BrowserRouter>
       </OfficeProvider>
     </AuthProvider>
   );
@@ -209,31 +153,34 @@ function SlugHomeRedirect() {
   return <Navigate to={`/o/${slug}/home`} replace />;
 }
 
+// ルートアクセス時の振り分け
 function RootRedirect() {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  // ローディング中は何も表示しない（フラッシュ防止）
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
+      <div style={{ textAlign:'center' }}>
+        <img src="/logo.JPG" alt="みかわ" style={{ width:80, marginBottom:12 }} />
+        <div style={{ fontSize:13, color:'#888' }}>読み込み中...</div>
+      </div>
+    </div>
+  );
 
   const savedSlug = localStorage.getItem('office_slug');
 
-  // ★① URLにslugがある場合は絶対優先（最重要）
-  const pathParts = window.location.pathname.split('/');
-  const urlSlug = pathParts[2];
-
-  if (urlSlug) {
-    return <Navigate to={`/o/${urlSlug}/home`} replace />;
+  // ログイン済み
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user?.role === 'member') {
+    if (savedSlug === 'free') return <Navigate to="/free/home" replace />;
+    if (savedSlug) return <Navigate to={`/o/${savedSlug}/home`} replace />;
+    return <Navigate to="/free/home" replace />;
   }
 
-  // ★② 保存されているslug
-  if (savedSlug && savedSlug !== 'free') {
-    return <Navigate to={`/o/${savedSlug}/login`} replace />;
-  }
+  // 未ログイン → savedSlug から適切なログイン画面へ
+  if (savedSlug === 'free') return <Navigate to="/free/login" replace />;
+  if (savedSlug && savedSlug !== 'free') return <Navigate to={`/o/${savedSlug}/login`} replace />;
 
-  // ★③ free
-  if (savedSlug === 'free') {
-    return <Navigate to="/free/login" replace />;
-  }
-
-  // ★④ fallback
-  return <Navigate to="/free/login" replace />;
+  // slugなし → 管理者ログイン
+  return <Navigate to="/admin/login" replace />;
 }
