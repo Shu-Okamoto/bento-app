@@ -1,9 +1,6 @@
-export { Dashboard } from './Dashboard';
-export { Orders }    from './Orders';
-export { Members }   from './AdminPages';
-export { Products }  from './AdminPages';
-export { Billing }   from './AdminPages';
-export { Settings }  from './AdminPages';
-export { Offices }   from './Offices';
-export { default as PrintPage }        from './PrintPage';
-export { default as BillingPrintPage } from './BillingPrintPage';
+export { default as Dashboard }         from './Dashboard';
+export { default as Orders }            from './Orders';
+export { Members, Products, Billing, Settings } from './AdminPages';
+export { default as Offices }           from './Offices';
+export { default as PrintPage }         from './PrintPage';
+export { default as BillingPrintPage }  from './BillingPrintPage';
