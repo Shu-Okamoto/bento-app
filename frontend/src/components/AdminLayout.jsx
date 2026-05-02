@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,9 +13,22 @@ const NAV = [
   { to: '/admin/settings', label: '設定',           icon: '⚙️' },
 ];
 
+const BREAKPOINT = 768;
+
 export default function AdminLayout() {
   const { logout } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= BREAKPOINT);
+  const [open, setOpen] = useState(window.innerWidth >= BREAKPOINT);
+
+  useEffect(() => {
+    function onResize() {
+      const desktop = window.innerWidth >= BREAKPOINT;
+      setIsDesktop(desktop);
+      setOpen(desktop); // PCサイズなら開く、スマホサイズなら閉じる
+    }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   function handleLogout() {
     logout();
@@ -23,22 +36,20 @@ export default function AdminLayout() {
   }
 
   function handleNav() {
-    // スマホのときはナビタップで閉じる
-    if (window.innerWidth < 768) setOpen(false);
+    if (!isDesktop) setOpen(false);
   }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', minHeight: '-webkit-fill-available' }}>
 
-      {/* オーバーレイ（スマホ時） */}
-      {open && (
+      {/* オーバーレイ（スマホで開いているときのみ） */}
+      {open && !isDesktop && (
         <div
           onClick={() => setOpen(false)}
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.5)',
             zIndex: 40,
-            display: 'block',
           }}
         />
       )}
@@ -50,28 +61,31 @@ export default function AdminLayout() {
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
-        position: 'fixed',
+        // PCでは常時表示、スマホではoverlayで開閉
+        position: isDesktop ? 'sticky' : 'fixed',
         top: 0,
         left: 0,
-        bottom: 0,
+        bottom: isDesktop ? 'auto' : 0,
+        height: isDesktop ? '100vh' : '100%',
         zIndex: 50,
         transform: open ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.25s ease',
+        transition: isDesktop ? 'none' : 'transform 0.25s ease',
       }}>
-        {/* サイドバーヘッダー */}
         <div style={{ padding: '14px 16px', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, height: 28, background: '#1D9E75', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700 }}>弁</div>
             <span style={{ color: 'white', fontWeight: 600, fontSize: 14 }}>管理画面</span>
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
-            ×
-          </button>
+          {/* スマホのときのみ閉じるボタンを表示 */}
+          {!isDesktop && (
+            <button
+              onClick={() => setOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
+              ×
+            </button>
+          )}
         </div>
 
-        {/* ナビゲーション */}
         <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
           {NAV.map(({ to, label, icon, end }) => (
             <NavLink key={to} to={to} end={end} onClick={handleNav} style={({ isActive }) => ({
@@ -95,7 +109,7 @@ export default function AdminLayout() {
       {/* メインコンテンツ */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
-        {/* トップバー */}
+        {/* トップバー（スマホのみハンバーガー表示） */}
         <header style={{
           background: 'white',
           borderBottom: '1px solid #e0dfd8',
@@ -107,26 +121,25 @@ export default function AdminLayout() {
           top: 0,
           zIndex: 30,
         }}>
-          {/* ハンバーガーボタン */}
-          <button
-            onClick={() => setOpen(o => !o)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', gap: 5,
-              padding: 6, borderRadius: 8,
-            }}>
-            <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
-          </button>
-
+          {!isDesktop && (
+            <button
+              onClick={() => setOpen(o => !o)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', gap: 5,
+                padding: 6, borderRadius: 8,
+              }}>
+              <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 22, height: 2, background: '#1a1a1a', borderRadius: 2 }} />
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 26, height: 26, background: '#1D9E75', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 13, fontWeight: 700 }}>弁</div>
             <span style={{ fontWeight: 600, fontSize: 15, color: '#1a1a1a' }}>みかわ 管理画面</span>
           </div>
         </header>
 
-        {/* ページコンテンツ */}
         <main style={{
           flex: 1,
           padding: 16,
