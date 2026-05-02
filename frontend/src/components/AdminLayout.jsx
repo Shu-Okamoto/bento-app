@@ -9,7 +9,8 @@ const NAV = [
   { to: '/admin/products', label: '商品管理',       icon: '🏷️' },
   { to: '/admin/members',  label: '会員管理',       icon: '👥' },
   { to: '/admin/offices',  label: '事業所管理',     icon: '🏢' },
-  { to: '/admin/billing',  label: '請求管理',       icon: '💴' },
+  { to: '/admin/billing',       label: '請求管理',     icon: '💴' },
+  { to: '/admin/billing-print', label: '請求書印刷',   icon: '🧾' },
   { to: '/admin/settings', label: '設定',           icon: '⚙️' },
 ];
 
@@ -73,8 +74,8 @@ export default function AdminLayout() {
       }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, background: '#1D9E75', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700 }}>弁</div>
-            <span style={{ color: 'white', fontWeight: 600, fontSize: 14 }}>管理画面</span>
+            <img src="/logo.JPG" alt="みかわ" style={{ height: 28, objectFit: 'contain', borderRadius: 4 }} />
+            <span style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>弁当アプリ管理画面</span>
           </div>
           {/* スマホのときのみ閉じるボタンを表示 */}
           {!isDesktop && (
@@ -135,8 +136,8 @@ export default function AdminLayout() {
             </button>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 26, height: 26, background: '#1D9E75', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 13, fontWeight: 700 }}>弁</div>
-            <span style={{ fontWeight: 600, fontSize: 15, color: '#1a1a1a' }}>みかわ 管理画面</span>
+            <img src="/logo.JPG" alt="みかわ" style={{ height: 28, objectFit: 'contain' }} />
+            <span style={{ fontWeight: 600, fontSize: 15, color: '#1a1a1a' }}>弁当アプリ管理画面</span>
           </div>
         </header>
 
