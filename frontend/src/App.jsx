@@ -50,18 +50,11 @@ function MemberRoute({ children }) {
   return children;
 }
 
-// フリー会員スコープ（マニフェスト注入）
+// フリー会員スコープ
 function FreeScope() {
-  const apiBase = import.meta.env.VITE_API_URL || '';
   useEffect(() => {
-    let link = document.querySelector('link[rel="manifest"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
-      document.head.appendChild(link);
-    }
-    link.href = `${apiBase}/api/pwa/free/manifest.json`;
-    return () => { link.href = '/manifest.webmanifest'; };
+    // 画面表示のたびに office_slug を保存（iOSのITPによる削除対策）
+    localStorage.setItem('office_slug', 'free');
   }, []);
   return <Outlet />;
 }
@@ -159,7 +152,7 @@ function SlugHomeRedirect() {
 function RootRedirect() {
   const { user, loading } = useAuth();
 
-  // ローディング中は何も表示しない（フラッシュ防止）
+  // ローディング中はスプラッシュ表示（フラッシュ防止）
   if (loading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
       <div style={{ textAlign:'center' }}>
@@ -169,20 +162,25 @@ function RootRedirect() {
     </div>
   );
 
+  // localStorage から slug を取得
+  // nullの場合はURLパスからも試みる（iOS ITP対策）
   const savedSlug = localStorage.getItem('office_slug');
+  const pathSlug = window.location.pathname.match(/^\/o\/([^/]+)/)?.[1];
+  const isFreeUrl = window.location.pathname.startsWith('/free');
+  const officeSlug = savedSlug || (isFreeUrl ? 'free' : pathSlug);
 
   // ログイン済み
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   if (user?.role === 'member') {
-    if (savedSlug === 'free') return <Navigate to="/free/home" replace />;
-    if (savedSlug) return <Navigate to={`/o/${savedSlug}/home`} replace />;
+    if (officeSlug === 'free') return <Navigate to="/free/home" replace />;
+    if (officeSlug) return <Navigate to={`/o/${officeSlug}/home`} replace />;
     return <Navigate to="/free/home" replace />;
   }
 
-  // 未ログイン → savedSlug から適切なログイン画面へ
-  if (savedSlug === 'free') return <Navigate to="/free/login" replace />;
-  if (savedSlug && savedSlug !== 'free') return <Navigate to={`/o/${savedSlug}/login`} replace />;
+  // 未ログイン → officeSlug から適切なログイン画面へ
+  if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
+  if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
 
-  // slugなし → 管理者ログイン
-  return <Navigate to="/admin/login" replace />;
+  // slugなし → フリーログイン
+  return <Navigate to="/free/login" replace />;
 }
