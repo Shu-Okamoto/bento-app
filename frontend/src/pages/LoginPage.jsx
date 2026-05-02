@@ -21,7 +21,12 @@ export default function LoginPage() {
     setLoading(true); setError('');
     try {
       const { token, user } = await api.post('/auth/login', { office_slug: slug, ...form });
-      if (slug) localStorage.setItem('office_slug', slug);
+      if (slug) {
+        localStorage.setItem('office_slug', slug);
+        // Cookie にも保存（iOS ITP対策）
+        const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+        document.cookie = 'office_slug=' + slug + '; expires=' + expires + '; path=/; SameSite=Lax';
+      }
       login(token, user);
       // 事業所スラグに応じた home へリダイレクト
       if (slug === 'free') navigate('/free/home', { replace: true });

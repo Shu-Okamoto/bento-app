@@ -17,6 +17,9 @@ export default function FreeLoginPage() {
     try {
       const { token, user } = await api.post('/auth/login/free', form);
       localStorage.setItem('office_slug', 'free');
+      // Cookie にも保存（iOS ITP対策）
+      const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+      document.cookie = 'office_slug=free; expires=' + expires + '; path=/; SameSite=Lax';
       login(token, user);
       navigate('/free/home', { replace: true });
     } catch(err) {
