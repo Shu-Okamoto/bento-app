@@ -82,6 +82,7 @@ export default function BillingPrintPage() {
         <p style={{ color: '#999', textAlign: 'center', marginTop: 40 }}>「集計する」を押してください</p>
       )}
 
+      <div id="billing-print-area">
       {officeList.map((office, idx) => {
         const members = getMemberSummary(office.orders);
         const grandTotal = office.orders.reduce((s, o) => s + o.total_price, 0);
@@ -189,10 +190,13 @@ export default function BillingPrintPage() {
         );
       })}
 
+      </div>
       <style>{`
         @media print {
           .no-print { display: none !important; }
+          body > * { display: none !important; }
           body { background: white; margin: 0; }
+          #billing-print-area { display: block !important; }
           @page { margin: 15mm; size: A4; }
         }
       `}</style>
