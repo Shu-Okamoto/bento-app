@@ -53,8 +53,9 @@ function MemberRoute({ children }) {
 // フリー会員スコープ
 function FreeScope() {
   useEffect(() => {
-    // 画面表示のたびに office_slug を保存（iOSのITPによる削除対策）
+    // localStorage と Cookie の両方に保存（iOS ITP対策）
     localStorage.setItem('office_slug', 'free');
+    setCookie('office_slug', 'free');
   }, []);
   return <Outlet />;
 }
@@ -148,6 +149,18 @@ function SlugHomeRedirect() {
   return <Navigate to={`/o/${slug}/home`} replace />;
 }
 
+// Cookie操作ユーティリティ
+function setCookie(name, value, days = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+}
+function getCookie(name) {
+  return document.cookie.split('; ').reduce((r, v) => {
+    const parts = v.split('=');
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, null);
+}
+
 // ルートアクセス時の振り分け
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -162,18 +175,20 @@ function RootRedirect() {
     </div>
   );
 
-  // localStorage から slug を取得
-  // nullの場合はURLパスからも試みる（iOS ITP対策）
-  const savedSlug = localStorage.getItem('office_slug');
-  const pathSlug = window.location.pathname.match(/^\/o\/([^/]+)/)?.[1];
-  const isFreeUrl = window.location.pathname.startsWith('/free');
-  const officeSlug = savedSlug || (isFreeUrl ? 'free' : pathSlug);
+  // URLパスを最優先で判定（localStorage + Cookie併用・iOS ITP対策）
+  const path = window.location.pathname;
+  const pathSlug = path.match(/^\/o\/([^/]+)/)?.[1];
+  const isFreeUrl = path.startsWith('/free');
+  const savedSlug = localStorage.getItem('office_slug') || getCookie('office_slug');
+  // URL > Cookie/localStorage の優先順位
+  const officeSlug = pathSlug || (isFreeUrl ? 'free' : savedSlug);
 
   // ログイン済み
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   if (user?.role === 'member') {
     if (officeSlug === 'free') return <Navigate to="/free/home" replace />;
-    if (officeSlug) return <Navigate to={`/o/${officeSlug}/home`} replace />;
+    if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/home`} replace />;
+    // slugが取れない場合はJWTのoffice情報から判断
     return <Navigate to="/free/home" replace />;
   }
 
@@ -181,6 +196,6 @@ function RootRedirect() {
   if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
   if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
 
-  // slugなし → フリーログイン
-  return <Navigate to="/free/login" replace />;
+  // slugなし → 管理者ログイン
+  return <Navigate to="/admin/login" replace />;
 }
