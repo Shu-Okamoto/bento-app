@@ -23,7 +23,8 @@ import {
   Offices   as AdminOffices,
   Billing   as AdminBilling,
   Settings  as AdminSettings,
-  PrintPage
+  PrintPage,
+  BillingPrintPage
 } from './pages/admin/index.js';
 
 // 管理者ルートのガード
@@ -105,7 +106,8 @@ export default function App() {
                 <Route path="offices"    element={<AdminOffices />} />
                 <Route path="billing"    element={<AdminBilling />} />
                 <Route path="settings"   element={<AdminSettings />} />
-                <Route path="print"      element={<PrintPage />} />
+                <Route path="print"         element={<PrintPage />} />
+                <Route path="billing-print" element={<BillingPrintPage />} />
               </Route>
 
               {/* フリー会員 */}
