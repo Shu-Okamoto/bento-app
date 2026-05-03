@@ -164,9 +164,10 @@ function getCookie(name) {
 // ルートアクセス時の振り分け
 function RootRedirect() {
   const { user, loading } = useAuth();
+  const { office, loading: officeLoading } = useOffice();
 
-  // ローディング中はスプラッシュ表示（フラッシュ防止）
-  if (loading) return (
+  // 両方のローディングが完了するまでスプラッシュ表示
+  if (loading || officeLoading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
       <div style={{ textAlign:'center' }}>
         <img src="/logo.JPG" alt="みかわ" style={{ width:80, marginBottom:12 }} />
@@ -175,20 +176,31 @@ function RootRedirect() {
     </div>
   );
 
-  // URLパスを最優先で判定（localStorage + Cookie併用・iOS ITP対策）
+  // slug の優先順位：
+  // 1. OfficeContext（サブドメインから取得）
+  // 2. URLパス（/o/:slug/）
+  // 3. Cookie
+  // 4. localStorage
   const path = window.location.pathname;
-  const pathSlug = path.match(/^\/o\/([^/]+)/)?.[1];
+  const pathSlug = path.match(/\/o\/([^/]+)/)?.[1];
   const isFreeUrl = path.startsWith('/free');
-  const savedSlug = localStorage.getItem('office_slug') || getCookie('office_slug');
-  // URL > Cookie/localStorage の優先順位
-  const officeSlug = pathSlug || (isFreeUrl ? 'free' : savedSlug);
+  const savedSlug = getCookie('office_slug') || localStorage.getItem('office_slug');
+  const subdomainSlug = office?.slug;
+
+  // サブドメインが取れた場合はそれを最優先
+  const officeSlug = subdomainSlug || pathSlug || (isFreeUrl ? 'free' : savedSlug);
+
+  // サブドメインのslugをCookieとlocalStorageに保存
+  if (subdomainSlug && subdomainSlug !== 'free') {
+    localStorage.setItem('office_slug', subdomainSlug);
+    setCookie('office_slug', subdomainSlug);
+  }
 
   // ログイン済み
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   if (user?.role === 'member') {
     if (officeSlug === 'free') return <Navigate to="/free/home" replace />;
     if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/home`} replace />;
-    // slugが取れない場合はJWTのoffice情報から判断
     return <Navigate to="/free/home" replace />;
   }
 
