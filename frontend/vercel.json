@@ -1,24 +1,5 @@
 {
-  "routes": [
-    {
-      "src": "/o/([^a-z0-9_-]*)([a-z0-9_-]+)/manifest\\.json",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/o/$2/manifest.json"
-    },
-    {
-      "src": "/free/manifest\\.json",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/free/manifest.json"
-    },
-    {
-      "src": "/o/([^a-z0-9_-]*)([a-z0-9_-]+)/icon-192\\.png",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/o/$2/icon-192.png"
-    },
-    {
-      "src": "/o/([^a-z0-9_-]*)([a-z0-9_-]+)/icon-512\\.png",
-      "dest": "https://bento-app-qt5c.onrender.com/api/pwa/o/$2/icon-512.png"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
