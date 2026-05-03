@@ -56,7 +56,7 @@ export default function AdminLayout() {
       )}
 
       {/* サイドバー */}
-      <aside style={{
+      <aside className="no-print" style={{
         width: 220,
         background: '#1a1a1a',
         display: 'flex',
