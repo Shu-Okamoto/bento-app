@@ -194,7 +194,9 @@ export default function BillingPrintPage() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; margin: 0 !important; }
+          body { background: white !important; margin: 0 !important; overflow: hidden !important; }
+          * { overflow: visible !important; scrollbar-width: none !important; }
+          *::-webkit-scrollbar { display: none !important; }
           #billing-print-area { display: block !important; }
           @page { margin: 15mm; size: A4; }
         }

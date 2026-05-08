@@ -132,7 +132,9 @@ export default function PrintPage() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; margin: 0 !important; }
+          body { background: white !important; margin: 0 !important; overflow: hidden !important; }
+          * { overflow: visible !important; scrollbar-width: none !important; }
+          *::-webkit-scrollbar { display: none !important; }
           #print-area { border-radius: 0 !important; padding: 16px !important; max-width: 100% !important; }
           @page { margin: 10mm; size: A4 landscape; }
         }
