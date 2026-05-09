@@ -41,7 +41,8 @@ export default function LoginPage() {
     <div style={{ maxWidth: 400, margin: '60px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <img src="/logo.JPG" alt="みかわ" style={{ width: 140, margin: '0 auto 12px', display: 'block' }} />
-        <h1 style={{ fontSize: 20, fontWeight: 700 }}>ログイン</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700 }}>みかわ弁当注文アプリ</h1>
+        
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
