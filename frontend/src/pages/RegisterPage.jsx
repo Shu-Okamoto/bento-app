@@ -89,5 +89,6 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+   </div>   
   );
 }
