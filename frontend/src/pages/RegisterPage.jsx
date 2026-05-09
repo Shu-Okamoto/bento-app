@@ -38,7 +38,7 @@ export default function RegisterPage() {
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ width: 48, height: 48, background: '#1D9E75', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 24, margin: '0 auto 12px' }}>弁</div>
         <h1 style={{ fontSize: 20, fontWeight: 700 }}>会員登録</h1>
-        <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>べんとうオーダーへようこそ</p>
+        <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>みかわ弁当注文アプリへようこそ</p>
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
@@ -48,15 +48,15 @@ export default function RegisterPage() {
           </div>
           <div className="form-group">
             <label>所属（部署名）</label>
-            <input value={form.department} onChange={set('department')} placeholder="営業部 第一課" />
+            <input value={form.department} onChange={set('department')} placeholder="営業部 など任意で入力" />
           </div>
           <div className="form-group">
             <label>電話番号 *</label>
             <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" required type="text" inputMode="tel" />
           </div>
           <div className="form-group">
-            <label>住所・お届け先</label>
-            <input value={form.address} onChange={set('address')} placeholder="東京都千代田区〇〇1-2-3" />
+            <label>お届け先</label>
+            <input value={form.address} onChange={set('address')} placeholder="所属でわからない場合に入力" />
           </div>
           <div className="form-group">
             <label>パスワード *</label>
