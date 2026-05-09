@@ -44,7 +44,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <<div style={{ maxWidth: 440, margin: '40px auto', padding: 16 }}>
+    <div style={{ maxWidth: 440, margin: '40px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <img src="/logo.JPG" alt="みかわ" style={{ width: 120, margin: '0 auto 12px', display: 'block' }} />
         {officeName && (
