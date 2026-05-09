@@ -1,5 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function MemberLayout() {
@@ -7,21 +6,15 @@ export default function MemberLayout() {
   const { slug: paramSlug } = useParams();
   const savedSlug = localStorage.getItem('office_slug');
   const officeSlug = paramSlug || savedSlug;
+  const isFree = officeSlug === 'free' || window.location.pathname.startsWith('/free');
+  const base = isFree ? '/free' : `/o/${officeSlug}`;
 
   function handleLogout() {
     logout();
-    if (officeSlug === 'free') {
-      window.location.href = '/free/login';
-    } else if (officeSlug) {
-      window.location.href = `/o/${officeSlug}/login`;
-    } else {
-      window.location.href = '/login';
-    }
+    if (officeSlug === 'free') window.location.href = '/free/login';
+    else if (officeSlug) window.location.href = `/o/${officeSlug}/login`;
+    else window.location.href = '/login';
   }
-
-  // /free/xxx か /o/:slug/xxx かを判定
-  const isFree = officeSlug === 'free' || window.location.pathname.startsWith('/free');
-  const base = isFree ? '/free' : `/o/${officeSlug}`;
 
   const NAV = [
     { to: `${base}/home`,    label: '注文',       icon: '🍱' },
@@ -30,7 +23,7 @@ export default function MemberLayout() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', minHeight: '-webkit-fill-available', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '-webkit-fill-available', display: 'flex', flexDirection: 'column' }}>
       <header style={{
         background: 'white', borderBottom: '1px solid #e0dfd8',
         padding: '10px 16px',
