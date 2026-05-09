@@ -41,7 +41,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', minHeight: '-webkit-fill-available' }}>
+    <div style={{ display: 'flex', minHeight: '-webkit-fill-available' }}>
 
       {/* オーバーレイ（スマホで開いているときのみ） */}
       {open && !isDesktop && (
