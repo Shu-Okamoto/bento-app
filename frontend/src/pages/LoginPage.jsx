@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <img src="/logo.JPG" alt="みかわ" style={{ width: 140, margin: '0 auto 12px', display: 'block' }} />
         <h1 style={{ fontSize: 20, fontWeight: 700 }}>みかわ弁当注文アプリ</h1>
-        
+        <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>事業所会員ログイン</p>
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
