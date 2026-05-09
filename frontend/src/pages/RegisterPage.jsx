@@ -15,6 +15,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+　 // 事業所名を取得
+  useEffect(() => {
+    if (office?.name) {
+      setOfficeName(office.name);
+    } else if (slug) {
+      api.get(`/offices/slug/${slug}`)
+        .then(data => setOfficeName(data.name))
+        .catch(() => {});
+    }
+  }, [slug, office]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -34,12 +44,15 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ maxWidth: 440, margin: '40px auto', padding: 16 }}>
+    <<div style={{ maxWidth: 440, margin: '40px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, background: '#1D9E75', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 24, margin: '0 auto 12px' }}>弁</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700 }}>会員登録</h1>
-        <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>みかわ弁当注文アプリへようこそ</p>
-      </div>
+        <img src="/logo.JPG" alt="みかわ" style={{ width: 120, margin: '0 auto 12px', display: 'block' }} />
+        {officeName && (
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#1a1a1a', marginBottom: 4 }}>
+            {officeName}
+          </p>
+        )}
+        <p style={{ fontSize: 14, color: '#555' }}>みかわ弁当注文アプリへようこそ</p>
       <div className="card">
         <form onSubmit={handleSubmit}>
           <div className="form-group">
