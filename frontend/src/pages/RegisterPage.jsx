@@ -13,9 +13,11 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', department: '', phone: '', address: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [officeName, setOfficeName] = useState('');
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-　 // 事業所名を取得
+
+  // 事業所名を取得
   useEffect(() => {
     if (office?.name) {
       setOfficeName(office.name);
@@ -32,7 +34,11 @@ export default function RegisterPage() {
     setLoading(true); setError('');
     try {
       const { token, user } = await api.post('/auth/register', { office_slug: slug, ...form });
-      if (slug) localStorage.setItem('office_slug', slug);
+      if (slug) {
+        localStorage.setItem('office_slug', slug);
+        const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+        document.cookie = 'office_slug=' + slug + '; expires=' + expires + '; path=/; SameSite=Lax';
+      }
       login(token, user);
       if (slug) navigate(`/o/${slug}/home`, { replace: true });
       else navigate('/', { replace: true });
@@ -53,6 +59,7 @@ export default function RegisterPage() {
           </p>
         )}
         <p style={{ fontSize: 14, color: '#555' }}>みかわ弁当注文アプリへようこそ</p>
+      </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -61,15 +68,15 @@ export default function RegisterPage() {
           </div>
           <div className="form-group">
             <label>所属（部署名）</label>
-            <input value={form.department} onChange={set('department')} placeholder="営業部 など任意で入力" />
+            <input value={form.department} onChange={set('department')} placeholder="営業部 第一課" />
           </div>
           <div className="form-group">
             <label>電話番号 *</label>
             <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" required type="text" inputMode="tel" />
           </div>
           <div className="form-group">
-            <label>お届け先</label>
-            <input value={form.address} onChange={set('address')} placeholder="所属でわからない場合に入力" />
+            <label>住所・お届け先</label>
+            <input value={form.address} onChange={set('address')} placeholder="東京都千代田区〇〇1-2-3" />
           </div>
           <div className="form-group">
             <label>パスワード *</label>
@@ -89,6 +96,5 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
-   </div>   
   );
 }
