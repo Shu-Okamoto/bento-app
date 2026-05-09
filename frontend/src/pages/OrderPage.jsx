@@ -94,6 +94,9 @@ export default function OrderPage() {
   }
 
   return (
+    <button onClick={() => showToast('テスト', 'success')} style={{position:'fixed',top:10,right:10,zIndex:9999,padding:'8px 16px',background:'red',color:'white',border:'none',borderRadius:8}}>
+  トーストテスト
+</button>
     <div>
       <div className="page-header"><h1>注文する</h1></div>
       {isFree && (
