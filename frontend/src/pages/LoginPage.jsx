@@ -40,7 +40,7 @@ export default function LoginPage() {
   return (
     <div style={{ maxWidth: 400, margin: '60px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, background: '#1D9E75', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 24, margin: '0 auto 12px' }}>弁</div>
+        <img src="/logo.JPG" alt="みかわ" style={{ width: 140, margin: '0 auto 12px', display: 'block' }} />
         <h1 style={{ fontSize: 20, fontWeight: 700 }}>ログイン</h1>
       </div>
       <div className="card">
