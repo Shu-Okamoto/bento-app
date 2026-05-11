@@ -177,7 +177,11 @@ export default function OrderPage() {
         <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleOrder} disabled={loading||!selected||freeMinNotMet}>
           {loading ? '送信中...' : '注文を確定する'}
         </button>
-        <p style={{ fontSize:11, color:'#999', textAlign:'center', marginTop:8 }}>締切：前営業日 15:00まで</p>
+        {deadlineInfo && (
+          <p style={{ fontSize:11, color:'#999', textAlign:'center', marginTop:8 }}>
+            締切：{deadlineInfo.deadlineLabel || '前営業日 15:00まで'}
+          </p>
+        )}
       </div>
     </div>
   );
