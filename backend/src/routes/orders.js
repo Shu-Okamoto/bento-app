@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const { notifyNewOrder } = require('../utils/notify');
 const supabase = require('../utils/supabase');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { notifyNewOrder } = require('../utils/notify');
 
 const JP_HOLIDAYS = [
   '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
@@ -18,14 +18,9 @@ async function getHolidaySettings() {
   return data || { closed_sat: true, closed_sun: true, closed_hol: true, extra_dates: [] };
 }
 
-// YYYY-MM-DD 文字列からJSTの曜日を取得（0=日〜6=土）
-// ポイント: 文字列をそのまま分割して使いJSTで解釈する
 function getDayOfWeek(dateStr) {
   const [year, month, day] = dateStr.split('-').map(Number);
-  // JSTのDateオブジェクトを生成（UTCオフセットを明示）
-  const d = new Date(Date.UTC(year, month - 1, day));
-  // UTCの曜日 = JSTの曜日（日付文字列がJST前提なので補正不要）
-  return d.getUTCDay(); // 0=日, 1=月, ..., 6=土
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
 function isHoliday(dateStr, settings) {
@@ -37,7 +32,6 @@ function isHoliday(dateStr, settings) {
   return false;
 }
 
-// 前営業日を求める（YYYY-MM-DD → YYYY-MM-DD）
 function getPrevBizDay(dateStr, settings) {
   const [year, month, day] = dateStr.split('-').map(Number);
   const d = new Date(Date.UTC(year, month - 1, day));
@@ -52,46 +46,69 @@ function getPrevBizDay(dateStr, settings) {
   return prev;
 }
 
-// 現在のJST時刻を取得
-function nowJST() {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000);
-}
-
-// 締切チェック
-async function checkDeadline(delivery_date) {
+// 事業所の締切設定を考慮した締切チェック
+async function checkDeadline(delivery_date, office_id) {
   const settings = await getHolidaySettings();
 
   if (isHoliday(delivery_date, settings)) {
     return { allowed: false, reason: '配達日が休日です' };
   }
 
-  const prevDay = getPrevBizDay(delivery_date, settings);
-  // 前営業日の15:00 JSTをUTCで表現（JST = UTC+9 なので UTC 06:00）
-  const [py, pm, pd] = prevDay.split('-').map(Number);
-  const deadline = new Date(Date.UTC(py, pm - 1, pd, 6, 0, 0)); // 06:00 UTC = 15:00 JST
+  // 事業所の締切設定を取得
+  let deadlineType = 'prev_day';
+  let deadlineHour = 15;
+
+  if (office_id) {
+    const { data: office } = await supabase
+      .from('offices').select('deadline_type, deadline_hour').eq('id', office_id).single();
+    if (office) {
+      deadlineType = office.deadline_type || 'prev_day';
+      deadlineHour = office.deadline_hour ?? 15;
+    }
+  }
+
+  // 締切なし
+  if (deadlineType === 'none') {
+    return { allowed: true, deadline: null, deadlineLabel: '締切なし' };
+  }
 
   const now = new Date();
-  const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
+  const [dy, dm, dd] = delivery_date.split('-').map(Number);
+  let deadline;
 
-  console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}, Now(UTC): ${now.toISOString()}`);
+  if (deadlineType === 'same_day') {
+    // 当日のdeadlineHour時 JST = UTC-(9-deadlineHour)
+    deadline = new Date(Date.UTC(dy, dm - 1, dd, deadlineHour - 9, 0, 0));
+  } else {
+    // 前営業日のdeadlineHour時
+    const prevDay = getPrevBizDay(delivery_date, settings);
+    const [py, pm, pd] = prevDay.split('-').map(Number);
+    deadline = new Date(Date.UTC(py, pm - 1, pd, deadlineHour - 9, 0, 0));
+    const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
+    console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}`);
+  }
 
   if (now > deadline) {
-    return { allowed: false, reason: `締切を過ぎています（${prevDay}（${prevDow}）15:00まで）` };
+    const label = deadlineType === 'same_day'
+      ? `当日${deadlineHour}:00`
+      : `前営業日${deadlineHour}:00`;
+    return { allowed: false, reason: `締切を過ぎています（${label}まで）` };
   }
 
   return {
     allowed: true,
     deadline: deadline.toISOString(),
-    prevBizDay: prevDay,
-    prevBizDayLabel: `${prevDay}（${prevDow}）`
+    deadlineLabel: deadlineType === 'same_day'
+      ? `当日${deadlineHour}:00まで`
+      : `前営業日${deadlineHour}:00まで`
   };
 }
 
 // 締切チェックAPI（フロントエンド用）
-router.get('/deadline-check', async (req, res) => {
+router.get('/deadline-check', authMiddleware, async (req, res) => {
   const { delivery_date } = req.query;
   if (!delivery_date) return res.status(400).json({ error: '日付を指定してください' });
-  const result = await checkDeadline(delivery_date);
+  const result = await checkDeadline(delivery_date, req.user.office_id);
   res.json(result);
 });
 
@@ -108,15 +125,15 @@ router.get('/my', authMiddleware, async (req, res) => {
 // 注文作成
 router.post('/', authMiddleware, async (req, res) => {
   const { product_id, quantity, delivery_date, options, note } = req.body;
-  const check = await checkDeadline(delivery_date);
+  const check = await checkDeadline(delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: check.reason });
 
   const { data: product } = await supabase.from('products').select('price, name').eq('id', product_id).single();
-  const product_name = product?.name;
   if (!product) return res.status(404).json({ error: '商品が見つかりません' });
 
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
+  const product_name = product.name;
 
   if (req.user.member_type === 'free' && total_price < 3000) {
     return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
@@ -131,22 +148,17 @@ router.post('/', authMiddleware, async (req, res) => {
     await supabase.from('order_options').insert(options.map(o => ({ order_id: order.id, name: o.name, price: o.price })));
   }
 
-  // 注文通知（非同期・エラーがあっても注文は成功扱い）
   try {
     const { data: member } = await supabase.from('members').select('name').eq('id', req.user.id).single();
     const { data: office } = await supabase.from('offices').select('name').eq('id', req.user.office_id).single();
     await notifyNewOrder({
       memberName: member?.name || '不明',
       officeName: office?.name || '不明',
-      productName: product_name || '商品',
-      quantity,
-      deliveryDate: delivery_date,
-      note: note || '',
-      totalPrice: total_price,
+      productName: product_name,
+      quantity, deliveryDate: delivery_date,
+      note: note || '', totalPrice: total_price,
     });
-  } catch(e) {
-    console.error('Notify error:', e);
-  }
+  } catch(e) { console.error('Notify error:', e); }
 
   res.json(order);
 });
@@ -159,7 +171,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
   if (existing.is_delivered) return res.status(400).json({ error: '配達済みの注文は変更できません' });
 
-  const check = await checkDeadline(existing.delivery_date);
+  const check = await checkDeadline(existing.delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: '締切を過ぎているため変更できません' });
 
   const { data: product } = await supabase.from('products').select('price').eq('id', product_id).single();
@@ -168,7 +180,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
 
-  // フリー会員は編集後も3000円以上必須
   if (req.user.member_type === 'free' && total_price < 3000) {
     return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
   }
@@ -192,7 +203,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
   if (existing.is_delivered) return res.status(400).json({ error: '配達済みの注文はキャンセルできません' });
 
-  const check = await checkDeadline(existing.delivery_date);
+  const check = await checkDeadline(existing.delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: '締切を過ぎているためキャンセルできません' });
 
   await supabase.from('order_options').delete().eq('order_id', req.params.id);
