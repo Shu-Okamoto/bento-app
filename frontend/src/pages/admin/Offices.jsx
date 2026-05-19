@@ -21,6 +21,7 @@ export default function Offices() {
     contact_name: '', email: '', billing_type: 'monthly',
     deadline_type: 'prev_day', deadline_hour: 15,
     show_free_products: false,
+    cart_enabled: false,
   });
   const [form, setForm] = useState(getEmptyForm());
 
@@ -42,6 +43,7 @@ export default function Offices() {
       deadline_type: o.deadline_type || 'prev_day',
       deadline_hour: o.deadline_hour ?? 15,
       show_free_products: o.show_free_products || false,
+      cart_enabled: o.cart_enabled || false,
     });
     setEditing(o.id); setShow(true);
   }
@@ -136,6 +138,25 @@ export default function Offices() {
             )}
           </div>
 
+          {/* カート機能設定 */}
+          <div className="form-group">
+            <label>カート機能</label>
+            <label style={{
+              display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13,
+              background: form.cart_enabled ? '#E1F5EE' : '#f5f4f0',
+              border: `1px solid ${form.cart_enabled ? '#9FE1CB' : '#e0dfd8'}`,
+              borderRadius:6, padding:'8px 14px', marginTop:4, width:'fit-content'
+            }}>
+              <input type="checkbox" checked={form.cart_enabled}
+                onChange={e => setForm(f => ({...f, cart_enabled: e.target.checked}))}
+                style={{ accentColor:'#1D9E75', width:16, height:16 }} />
+              🛒 カート機能を有効にする（複数商品をまとめて注文）
+            </label>
+            <div style={{ fontSize:11, color:'#888', marginTop:4 }}>
+              OFFの場合は従来通り1商品ずつの注文になります
+            </div>
+          </div>
+
           {/* フリー商品表示設定 */}
           <div className="form-group">
             <label>商品表示設定</label>
@@ -180,6 +201,11 @@ export default function Offices() {
               {o.show_free_products && (
                 <span style={{ fontSize:11, background:'#fff8ee', color:'#854F0B', padding:'2px 8px', borderRadius:99 }}>
                   🙋 フリー商品あり
+                </span>
+              )}
+              {o.cart_enabled && (
+                <span style={{ fontSize:11, background:'#E1F5EE', color:'#0F6E56', padding:'2px 8px', borderRadius:99 }}>
+                  🛒 カートあり
                 </span>
               )}
             </div>
