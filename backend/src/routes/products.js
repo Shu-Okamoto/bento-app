@@ -22,6 +22,10 @@ router.get('/', authMiddleware, async (req, res) => {
 
   // 会員種別で表示制限
   const filtered = data.filter(p => {
+    // 事業所専用商品：該当事業所のみ表示
+    if (p.office_id) {
+      return p.office_id === officeId;
+    }
     if (memberType === 'free') return p.show_for_free !== false;
     // 事業所会員：事業所向け商品 + show_free_productsがONならフリー向けも
     if (p.show_for_office !== false) return true;
@@ -39,6 +43,7 @@ router.get('/public', async (_req, res) => {
     .select('*, product_options(*)')
     .eq('is_active', true)
     .eq('show_for_free', true)
+    .is('office_id', null)
     .order('sort_order');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -72,14 +77,15 @@ router.patch('/sort', adminMiddleware, async (req, res) => {
 
 // 商品作成（管理者）
 router.post('/', adminMiddleware, async (req, res) => {
-  const { name, price, image_url, is_active, sort_order, options, available_days, show_for_office, show_for_free } = req.body;
+  const { name, price, image_url, is_active, sort_order, options, available_days, show_for_office, show_for_free, office_id } = req.body;
   const { data: product, error } = await supabase.from('products')
     .insert({ name, price, image_url,
       is_active: is_active ?? true,
       sort_order: sort_order ?? 0,
       available_days: available_days ?? [0,1,2,3,4,5,6],
-      show_for_office: show_for_office ?? true,
-      show_for_free: show_for_free ?? true
+      show_for_office: office_id ? false : (show_for_office ?? true),
+      show_for_free: office_id ? false : (show_for_free ?? true),
+      office_id: office_id || null
     }).select().single();
   if (error) return res.status(400).json({ error: error.message });
   if (options && options.length > 0) {
