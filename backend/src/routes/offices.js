@@ -52,5 +52,14 @@ router.get('/current', async (req, res) => {
   if (error) return res.status(404).json({ error: '事業所が見つかりません' });
   res.json(data);
 });
-
+// 事業所単体取得（会員用・cart_enabled等の設定を返す）
+router.get('/:id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('offices')
+    .select('id, name, slug, cart_enabled, deadline_type, deadline_hour, show_free_products')
+    .eq('id', req.params.id)
+    .single();
+  if (error) return res.status(404).json({ error: '事業所が見つかりません' });
+  res.json(data);
+});
 module.exports = router;
