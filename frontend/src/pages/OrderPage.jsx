@@ -58,9 +58,18 @@ export default function OrderPage() {
   const [cart, setCart] = useState([]); // [{ product, options, qty, note }]
   const [showCart, setShowCart] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [cartEnabled, setCartEnabled] = useState(isFreeRoute); // フリーは常にON
 
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
+  useEffect(() => {
+    // 事業所のカート設定を取得
+    if (!isFreeRoute && user?.office_id) {
+      api.get(`/offices/${user.office_id}`)
+        .then(o => setCartEnabled(o.cart_enabled || false))
+        .catch(() => {});
+    }
+  }, [user]);
 
   async function loadProducts() {
     try {
@@ -113,6 +122,35 @@ export default function OrderPage() {
     const optT = item.options.reduce((a, o) => a + o.price, 0);
     return s + (item.product.price + optT) * item.qty;
   }, 0);
+
+  // カートなしの直接注文（事業所でcart_enabledがOFFの場合）
+  async function handleDirectOrder() {
+    if (!selected) return showToast('商品を選んでください', 'warn');
+    if (!checkProductAvailableForDate(selected, date)) {
+      const dow = DAY_LABELS[getDayOfWeek(date)];
+      showToast(`${selected.name}は${dow}曜日の注文はできません`, 'warn');
+      return;
+    }
+    if (!deadlineInfo?.allowed) {
+      showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post('/orders', {
+        product_id: selected.id,
+        quantity: qty,
+        delivery_date: date,
+        options: selectedOpts,
+        note: note || null,
+        payment_method: 'cash'
+      });
+      showToast('注文が完了しました！', 'success');
+      setSelectedOpts([]); setQty(1); setNote('');
+    } catch(err) {
+      showToast(err.message, 'error');
+    } finally { setLoading(false); }
+  }
 
   // カートに追加
   function addToCart() {
@@ -182,7 +220,7 @@ export default function OrderPage() {
       {/* ヘッダー */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
         <h2 style={{ fontSize:16, fontWeight:700 }}>🍱 メニュー</h2>
-        {!isGuest && cart.length > 0 && (
+        {!isGuest && cartEnabled && cart.length > 0 && (
           <button onClick={() => setShowCart(true)} style={{
             background:'#1D9E75', color:'white', border:'none', borderRadius:10,
             padding:'8px 14px', fontSize:13, fontWeight:700, cursor:'pointer',
@@ -265,9 +303,15 @@ export default function OrderPage() {
                 style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', outline:'none', resize:'vertical', fontSize:14 }} />
             </div>
           )}
-          <button className="btn btn-primary" style={{ width:'100%' }} onClick={addToCart}>
-            {isGuest ? 'カートに追加（要会員登録）' : '🛒 カートに追加'}
-          </button>
+          {cartEnabled ? (
+            <button className="btn btn-primary" style={{ width:'100%' }} onClick={addToCart}>
+              {isGuest ? 'カートに追加（要会員登録）' : '🛒 カートに追加'}
+            </button>
+          ) : (
+            <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleDirectOrder}>
+              注文を確定する
+            </button>
+          )}
         </div>
       )}
 
