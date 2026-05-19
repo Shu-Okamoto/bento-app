@@ -27,6 +27,18 @@ import {
   BillingPrintPage
 } from './pages/admin/index.js';
 
+// Cookie操作ユーティリティ
+function setCookie(name, value, days = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+}
+function getCookie(name) {
+  return document.cookie.split('; ').reduce((r, v) => {
+    const parts = v.split('=');
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, null);
+}
+
 // 管理者ルートのガード
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
@@ -35,13 +47,13 @@ function AdminRoute({ children }) {
   return children;
 }
 
-// 会員ルートのガード（事業所スラグ対応）
+// 会員ルートのガード
 function MemberRoute({ children }) {
   const { user, loading } = useAuth();
   const { slug } = useParams();
   if (loading) return null;
   if (!user || user.role !== 'member') {
-    const savedSlug = localStorage.getItem('office_slug');
+    const savedSlug = getCookie('office_slug') || localStorage.getItem('office_slug');
     const officeSlug = slug || savedSlug;
     if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
     if (officeSlug) return <Navigate to={`/o/${officeSlug}/login`} replace />;
@@ -53,34 +65,64 @@ function MemberRoute({ children }) {
 // フリー会員スコープ
 function FreeScope() {
   useEffect(() => {
-    // localStorage と Cookie の両方に保存（iOS ITP対策）
     localStorage.setItem('office_slug', 'free');
     setCookie('office_slug', 'free');
   }, []);
   return <Outlet />;
 }
 
-// 事業所スコープのレイアウト（動的マニフェスト注入）
+// 事業所スコープ
 function OfficeScope() {
   const { slug } = useParams();
-  const apiBase = import.meta.env.VITE_API_URL || '';
-
   useEffect(() => {
     if (!slug) return;
-    let link = document.querySelector('link[rel="manifest"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'manifest';
-      document.head.appendChild(link);
-    }
-    link.href = `${apiBase}/api/pwa/o/${slug}/manifest.json`;
-    return () => {
-      link.href = '/manifest.webmanifest';
-    };
-  }, [slug, apiBase]);
-
-  // Outlet で子ルートを描画（レイアウトとして機能）
+    localStorage.setItem('office_slug', slug);
+    setCookie('office_slug', slug);
+  }, [slug]);
   return <Outlet />;
+}
+
+// ルートアクセス時の振り分け
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  const { office, loading: officeLoading } = useOffice();
+
+  if (loading || officeLoading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
+      <div style={{ textAlign:'center' }}>
+        <img src="/logo.JPG" alt="みかわ" style={{ width:80, marginBottom:12 }} />
+        <div style={{ fontSize:13, color:'#888' }}>読み込み中...</div>
+      </div>
+    </div>
+  );
+
+  const path = window.location.pathname;
+  const pathSlug = path.match(/\/o\/([^/]+)/)?.[1];
+  const isFreeUrl = path.startsWith('/free');
+  const savedSlug = getCookie('office_slug') || localStorage.getItem('office_slug');
+  const subdomainSlug = office?.slug;
+  const officeSlug = subdomainSlug || pathSlug || (isFreeUrl ? 'free' : savedSlug);
+
+  if (subdomainSlug && subdomainSlug !== 'free') {
+    localStorage.setItem('office_slug', subdomainSlug);
+    setCookie('office_slug', subdomainSlug);
+  }
+
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user?.role === 'member') {
+    if (officeSlug === 'free') return <Navigate to="/free/home" replace />;
+    if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/home`} replace />;
+    return <Navigate to="/free/home" replace />;
+  }
+
+  if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
+  if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
+  return <Navigate to="/admin/login" replace />;
+}
+
+function SlugHomeRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={`/o/${slug}/home`} replace />;
 }
 
 export default function App() {
@@ -94,13 +136,13 @@ export default function App() {
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index              element={<AdminDashboard />} />
-                <Route path="orders"     element={<AdminOrders />} />
-                <Route path="products"   element={<AdminProducts />} />
-                <Route path="members"    element={<AdminMembers />} />
-                <Route path="offices"    element={<AdminOffices />} />
-                <Route path="billing"    element={<AdminBilling />} />
-                <Route path="settings"   element={<AdminSettings />} />
-                <Route path="print"         element={<PrintPage />} />
+                <Route path="orders"      element={<AdminOrders />} />
+                <Route path="products"    element={<AdminProducts />} />
+                <Route path="members"     element={<AdminMembers />} />
+                <Route path="offices"     element={<AdminOffices />} />
+                <Route path="billing"     element={<AdminBilling />} />
+                <Route path="settings"    element={<AdminSettings />} />
+                <Route path="print"       element={<PrintPage />} />
                 <Route path="billing-print" element={<BillingPrintPage />} />
               </Route>
 
@@ -108,15 +150,16 @@ export default function App() {
               <Route path="/free/register" element={<FreeRegisterPage />} />
               <Route path="/free/login"    element={<FreeLoginPage />} />
               <Route path="/free" element={<FreeScope />}>
+                {/* home はゲストでもアクセス可（注文時に登録促進） */}
+                <Route path="home"    element={<OrderPage />} />
                 <Route element={<MemberRoute><MemberLayout /></MemberRoute>}>
-                  <Route path="home"    element={<OrderPage />} />
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
                 <Route index element={<Navigate to="/free/home" replace />} />
               </Route>
 
-              {/* 事業所会員（/o/:slug/ スコープ） */}
+              {/* 事業所会員 */}
               <Route path="/o/:slug" element={<OfficeScope />}>
                 <Route path="register" element={<RegisterPage />} />
                 <Route path="login"    element={<LoginPage />} />
@@ -128,86 +171,15 @@ export default function App() {
                 <Route index element={<SlugHomeRedirect />} />
               </Route>
 
-              {/* 汎用ログイン（PWAホーム起動時のフォールバック） */}
+              {/* 汎用 */}
               <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-
-              {/* ルートアクセス → savedSlug から適切な画面へ */}
-              <Route path="/" element={<RootRedirect />} />
-              <Route path="*" element={<RootRedirect />} />
+              <Route path="/"         element={<RootRedirect />} />
+              <Route path="*"         element={<RootRedirect />} />
             </Routes>
           </ToastProvider>
         </BrowserRouter>
       </OfficeProvider>
     </AuthProvider>
   );
-}
-
-// /o/:slug/ → /o/:slug/home
-function SlugHomeRedirect() {
-  const { slug } = useParams();
-  return <Navigate to={`/o/${slug}/home`} replace />;
-}
-
-// Cookie操作ユーティリティ
-function setCookie(name, value, days = 365) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
-}
-function getCookie(name) {
-  return document.cookie.split('; ').reduce((r, v) => {
-    const parts = v.split('=');
-    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
-  }, null);
-}
-
-// ルートアクセス時の振り分け
-function RootRedirect() {
-  const { user, loading } = useAuth();
-  const { office, loading: officeLoading } = useOffice();
-
-  // 両方のローディングが完了するまでスプラッシュ表示
-  if (loading || officeLoading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F9F4E8' }}>
-      <div style={{ textAlign:'center' }}>
-        <img src="/logo.JPG" alt="みかわ" style={{ width:80, marginBottom:12 }} />
-        <div style={{ fontSize:13, color:'#888' }}>読み込み中...</div>
-      </div>
-    </div>
-  );
-
-  // slug の優先順位：
-  // 1. OfficeContext（サブドメインから取得）
-  // 2. URLパス（/o/:slug/）
-  // 3. Cookie
-  // 4. localStorage
-  const path = window.location.pathname;
-  const pathSlug = path.match(/\/o\/([^/]+)/)?.[1];
-  const isFreeUrl = path.startsWith('/free');
-  const savedSlug = getCookie('office_slug') || localStorage.getItem('office_slug');
-  const subdomainSlug = office?.slug;
-
-  // サブドメインが取れた場合はそれを最優先
-  const officeSlug = subdomainSlug || pathSlug || (isFreeUrl ? 'free' : savedSlug);
-
-  // サブドメインのslugをCookieとlocalStorageに保存
-  if (subdomainSlug && subdomainSlug !== 'free') {
-    localStorage.setItem('office_slug', subdomainSlug);
-    setCookie('office_slug', subdomainSlug);
-  }
-
-  // ログイン済み
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
-  if (user?.role === 'member') {
-    if (officeSlug === 'free') return <Navigate to="/free/home" replace />;
-    if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/home`} replace />;
-    return <Navigate to="/free/home" replace />;
-  }
-
-  // 未ログイン → officeSlug から適切なログイン画面へ
-  if (officeSlug === 'free') return <Navigate to="/free/login" replace />;
-  if (officeSlug && officeSlug !== 'free') return <Navigate to={`/o/${officeSlug}/login`} replace />;
-
-  // slugなし → 管理者ログイン
-  return <Navigate to="/admin/login" replace />;
 }

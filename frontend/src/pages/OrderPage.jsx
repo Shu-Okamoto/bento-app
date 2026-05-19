@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -6,10 +7,72 @@ import { tomorrowJST, formatDeadlineJa, getDayOfWeek } from '../utils/date';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
+// 登録促進モーダル
+function RegisterModal({ onClose, slug }) {
+  const isFree = !slug || slug === 'free';
+  const registerUrl = isFree ? '/free/register' : `/o/${slug}/register`;
+  const loginUrl    = isFree ? '/free/login'    : `/o/${slug}/login`;
+
+  return (
+    <div style={{
+      position:'fixed', inset:0, background:'rgba(0,0,0,0.5)',
+      zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center',
+      padding:16
+    }} onClick={onClose}>
+      <div style={{
+        background:'white', borderRadius:16, padding:24, maxWidth:360, width:'100%',
+        boxShadow:'0 8px 32px rgba(0,0,0,0.2)'
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ textAlign:'center', marginBottom:16 }}>
+          <img src="/logo.JPG" alt="みかわ" style={{ width:64, marginBottom:10 }} />
+          <h2 style={{ fontSize:17, fontWeight:700, marginBottom:6 }}>
+            注文には会員登録が必要です
+          </h2>
+          <p style={{ fontSize:13, color:'#666', lineHeight:1.6 }}>
+            無料で登録してご利用ください。<br />
+            登録後はすぐに注文できます。
+          </p>
+        </div>
+        <a href={registerUrl} style={{
+          display:'block', width:'100%', padding:'12px',
+          background:'#1D9E75', color:'white', borderRadius:10,
+          textAlign:'center', fontWeight:700, fontSize:15,
+          textDecoration:'none', marginBottom:10
+        }}>
+          新規会員登録（無料）
+        </a>
+        <a href={loginUrl} style={{
+          display:'block', width:'100%', padding:'12px',
+          background:'white', color:'#1D9E75', borderRadius:10,
+          textAlign:'center', fontWeight:600, fontSize:14,
+          textDecoration:'none', border:'1px solid #1D9E75'
+        }}>
+          すでに登録済みの方はログイン
+        </a>
+        <button onClick={onClose} style={{
+          display:'block', width:'100%', marginTop:10,
+          padding:'10px', background:'none', border:'none',
+          color:'#999', fontSize:13, cursor:'pointer'
+        }}>
+          閉じる（商品を見るだけ）
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function OrderPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
-  const isFree = user?.member_type === 'free';
+
+  // URLから slug を取得
+  const pathSlug = location.pathname.match(/\/o\/([^/]+)/)?.[1];
+  const isFreeRoute = location.pathname.startsWith('/free');
+  const slug = pathSlug || (isFreeRoute ? 'free' : null);
+  const isGuest = !user;
+
   const [products, setProducts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [selectedOpts, setSelectedOpts] = useState([]);
@@ -18,20 +81,25 @@ export default function OrderPage() {
   const [date, setDate] = useState(tomorrowJST());
   const [deadlineInfo, setDeadlineInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => { loadProducts(); }, []);
-  useEffect(() => { if (date) checkDeadline(date, true); }, [date]);
+  useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
 
   async function loadProducts() {
     try {
-      const data = await api.get('/products');
+      // ゲストの場合はフリー商品を取得（認証なし）
+      const endpoint = isGuest ? '/products/public' : '/products';
+      const data = await api.get(endpoint);
       setProducts(data);
-      if (data.length > 0) {
-        setSelected(data[0]);
-        setSelectedOpts([]);
-      }
+      if (data.length > 0) { setSelected(data[0]); setSelectedOpts([]); }
     } catch(e) {
-      showToast('商品の読み込みに失敗しました', 'error');
+      // 認証エラーの場合はpublicエンドポイントを試みる
+      try {
+        const data = await api.get('/products/public');
+        setProducts(data);
+        if (data.length > 0) { setSelected(data[0]); setSelectedOpts([]); }
+      } catch { showToast('商品の読み込みに失敗しました', 'error'); }
     }
   }
 
@@ -49,8 +117,7 @@ export default function OrderPage() {
     if (!product) return false;
     if (!product.available_days || product.available_days.length === 0) return true;
     if (product.available_days.length === 7) return true;
-    const dow = getDayOfWeek(deliveryDate);
-    return product.available_days.includes(dow);
+    return product.available_days.includes(getDayOfWeek(deliveryDate));
   }
 
   function getAvailableDaysLabel(product) {
@@ -68,9 +135,14 @@ export default function OrderPage() {
 
   const optTotal = selectedOpts.reduce((s, o) => s + o.price, 0);
   const total = selected ? (selected.price + optTotal) * qty : 0;
-  const freeMinNotMet = isFree && total < 3000;
 
   async function handleOrder() {
+    // ゲストの場合は登録促進モーダルを表示
+    if (isGuest) {
+      setShowModal(true);
+      return;
+    }
+
     if (!selected) return showToast('商品を選んでください', 'warn');
     if (!checkProductAvailableForDate(selected, date)) {
       const dow = DAY_LABELS[getDayOfWeek(date)];
@@ -82,7 +154,7 @@ export default function OrderPage() {
       showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
       return;
     }
-    if (freeMinNotMet) return showToast('合計3,000円以上から注文できます', 'warn');
+
     setLoading(true);
     try {
       await api.post('/orders', { product_id: selected.id, quantity: qty, delivery_date: date, options: selectedOpts, note });
@@ -94,19 +166,30 @@ export default function OrderPage() {
   }
 
   return (
-    <div>
-      <div className="page-header"><h1>注文する</h1></div>
-      {isFree && (
-        <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'8px 14px', marginBottom:10, fontSize:12, color:'#633806' }}>
-          フリー会員：合計3,000円以上から注文できます
+    <div style={{ maxWidth:640, margin:'0 auto', padding:16 }}>
+      {/* ゲスト向けバナー */}
+      {isGuest && (
+        <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#0F6E56', marginBottom:2 }}>メニューをご覧いただけます</div>
+            <div style={{ fontSize:12, color:'#555' }}>注文するには会員登録（無料）が必要です</div>
+          </div>
+          <a href={slug && slug !== 'free' ? `/o/${slug}/register` : '/free/register'}
+            style={{ background:'#1D9E75', color:'white', padding:'8px 14px', borderRadius:8, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap' }}>
+            無料登録
+          </a>
         </div>
       )}
-      {deadlineInfo?.allowed && (
+
+      <h2 style={{ fontSize:16, fontWeight:700, marginBottom:12, color:'#1a1a1a' }}>🍱 メニュー</h2>
+
+      {deadlineInfo?.allowed && !isGuest && (
         <div style={{ background:'#e8f5ee', border:'1px solid #9FE1CB', borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:13, color:'#0F6E56', display:'flex', alignItems:'center', gap:8 }}>
           <span>✓</span>{`注文受付中 — 締切：${formatDeadlineJa(deadlineInfo.deadline)}まで`}
         </div>
       )}
-      <h2 style={{ fontSize:14, fontWeight:600, marginBottom:10, color:'#555' }}>商品を選ぶ</h2>
+
+      {/* 商品一覧 */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:16 }}>
         {products.map(p => {
           const daysLabel = getAvailableDaysLabel(p);
@@ -127,7 +210,6 @@ export default function OrderPage() {
                 <div style={{ fontSize:13, color:'#1D9E75', fontWeight:500, marginTop:2 }}>¥{p.price.toLocaleString()}〜</div>
                 {daysLabel && <div style={{ fontSize:11, color:'#888', marginTop:3 }}>📅 {daysLabel}</div>}
               </div>
-              {/* 選択中かつオプションあり → カード内に展開 */}
               {selected?.id === p.id && p.product_options && p.product_options.length > 0 && (
                 <div style={{ borderTop:'1px solid #e0dfd8', padding:'8px 10px', background:'#fafaf8' }}
                   onClick={e => e.stopPropagation()}>
@@ -149,11 +231,12 @@ export default function OrderPage() {
         })}
       </div>
 
+      {/* 注文カード */}
       <div className="card">
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
           <div className="form-group" style={{ marginBottom:0 }}>
             <label>お届け日</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} min={tomorrowJST()} />
+            <input type="date" value={date} onChange={e => { setDate(e.target.value); if(user) checkDeadline(e.target.value, true); }} min={tomorrowJST()} />
           </div>
           <div className="form-group" style={{ marginBottom:0 }}>
             <label>個数</label>
@@ -164,25 +247,34 @@ export default function OrderPage() {
             </div>
           </div>
         </div>
-        <div style={{ background: freeMinNotMet?'#fff8ee':'#f5f4f0', borderRadius:8, padding:'10px 12px', fontSize:14, marginBottom:12, border: freeMinNotMet?'1px solid #FAC775':'none' }}>
+
+        <div style={{ background:'#f5f4f0', borderRadius:8, padding:'10px 12px', fontSize:14, marginBottom:12 }}>
           {selected ? `${selected.name}${selectedOpts.length?'（'+selectedOpts.map(o=>o.name).join('・')+'）':''} × ${qty}個` : '商品を選んでください'}
-          {selected && <span style={{ float:'right', fontWeight:700, color: freeMinNotMet?'#854F0B':'#1D9E75' }}>¥{total.toLocaleString()}{isFree&&` / 3,000円`}</span>}
+          {selected && <span style={{ float:'right', fontWeight:700, color:'#1D9E75' }}>¥{total.toLocaleString()}</span>}
         </div>
-        {freeMinNotMet && <p style={{ fontSize:12, color:'#854F0B', marginBottom:8, textAlign:'center' }}>あと¥{(3000-total).toLocaleString()}で注文できます</p>}
-        <div className="form-group" style={{ marginBottom:12 }}>
-          <label>備考（任意）</label>
-          <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="例：お米少なめ、アレルギーあり など" rows={2} maxLength={200}
-            style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', outline:'none', resize:'vertical', fontSize:14 }} />
-        </div>
-        <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleOrder} disabled={loading||!selected||freeMinNotMet}>
-          {loading ? '送信中...' : '注文を確定する'}
+
+        {!isGuest && (
+          <div className="form-group" style={{ marginBottom:12 }}>
+            <label>備考（任意）</label>
+            <textarea value={note} onChange={e=>setNote(e.target.value)}
+              placeholder="例：お米少なめ、アレルギーあり など" rows={2} maxLength={200}
+              style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', outline:'none', resize:'vertical', fontSize:14 }} />
+          </div>
+        )}
+
+        <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleOrder} disabled={loading && !isGuest}>
+          {loading ? '送信中...' : isGuest ? '注文する（会員登録が必要です）' : '注文を確定する'}
         </button>
-        {deadlineInfo && (
+
+        {deadlineInfo && !isGuest && (
           <p style={{ fontSize:11, color:'#999', textAlign:'center', marginTop:8 }}>
             締切：{deadlineInfo.deadlineLabel || '前営業日 15:00まで'}
           </p>
         )}
       </div>
+
+      {/* 登録促進モーダル */}
+      {showModal && <RegisterModal onClose={() => setShowModal(false)} slug={slug} />}
     </div>
   );
 }
