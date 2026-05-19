@@ -57,6 +57,7 @@ export default function OrderPage() {
   // カート
   const [cart, setCart] = useState([]); // [{ product, options, qty, note }]
   const [showCart, setShowCart] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
 
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
@@ -149,7 +150,8 @@ export default function OrderPage() {
           quantity: item.qty,
           delivery_date: date,
           options: item.options,
-          note: item.note || null
+          note: item.note || null,
+          payment_method: isFreeRoute ? paymentMethod : 'cash'
         })
       ));
       showToast(`${cart.length}件の注文が完了しました！`, 'success');
@@ -305,6 +307,38 @@ export default function OrderPage() {
               お届け日：{date}
               {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
             </div>
+
+            {/* フリー会員のみ支払方法選択 */}
+            {isFreeRoute && (
+              <div className="form-group" style={{ marginBottom:16 }}>
+                <label style={{ fontWeight:600, marginBottom:8, display:'block' }}>お支払方法</label>
+                <div style={{ display:'flex', gap:10 }}>
+                  {[
+                    { value:'cash',   label:'💴 当日現金払い', desc:'お届け時にお支払い' },
+                    { value:'credit', label:'💳 クレジット決済', desc:'近日対応予定' },
+                  ].map(opt => (
+                    <label key={opt.value} style={{
+                      flex:1, display:'flex', flexDirection:'column', gap:4,
+                      cursor: opt.value === 'credit' ? 'not-allowed' : 'pointer',
+                      background: paymentMethod === opt.value ? '#E1F5EE' : '#f5f4f0',
+                      border: `2px solid ${paymentMethod === opt.value ? '#1D9E75' : '#e0dfd8'}`,
+                      borderRadius:10, padding:'10px 12px',
+                      opacity: opt.value === 'credit' ? 0.5 : 1,
+                    }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <input type="radio" name="payment" value={opt.value}
+                          checked={paymentMethod === opt.value}
+                          onChange={() => opt.value !== 'credit' && setPaymentMethod(opt.value)}
+                          disabled={opt.value === 'credit'}
+                          style={{ accentColor:'#1D9E75' }} />
+                        <span style={{ fontSize:13, fontWeight:600 }}>{opt.label}</span>
+                      </div>
+                      <span style={{ fontSize:11, color:'#888', paddingLeft:20 }}>{opt.desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button className="btn btn-primary" style={{ width:'100%', fontSize:16, padding:'14px' }} onClick={handleOrder} disabled={loading}>
               {loading ? '注文中...' : `${cart.length}件をまとめて注文する`}
