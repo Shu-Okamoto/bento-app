@@ -32,6 +32,18 @@ router.get('/', authMiddleware, async (req, res) => {
   res.json(filtered);
 });
 
+// 公開商品一覧（認証不要・ゲスト用・フリー向け商品を返す）
+router.get('/public', async (_req, res) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, product_options(*)')
+    .eq('is_active', true)
+    .eq('show_for_free', true)
+    .order('sort_order');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // 全商品（管理者）
 router.get('/all', adminMiddleware, async (_req, res) => {
   const { data, error } = await supabase
