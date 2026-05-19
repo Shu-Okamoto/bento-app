@@ -8,13 +8,15 @@ const DAYS = ['日','月','火','水','木','金','土'];
 export function Products() {
   const { showToast } = useToast();
   const [products, setProducts] = useState([]);
+  const [offices, setOffices] = useState([]);
   const [tab, setTab] = useState('list'); // 'list' | 'sort'
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
   const getEmptyForm = () => ({
     name:'', price:'', image_url:'', is_active:true,
     available_days:[0,1,2,3,4,5,6],
-    show_for_office:true, show_for_free:true
+    show_for_office:true, show_for_free:true,
+    office_id: null, // null=全体, uuid=事業所専用
   });
   const [form, setForm] = useState(getEmptyForm());
   const [opts, setOpts] = useState([]);
@@ -30,7 +32,10 @@ export function Products() {
     }));
   }
 
-  useEffect(() => { api.get('/products/all').then(setProducts); }, []);
+  useEffect(() => {
+    api.get('/products/all').then(setProducts);
+    api.get('/offices').then(d => setOffices(d.filter(o => o.slug !== 'free')));
+  }, []);
 
   function startEdit(p) {
     setForm({
@@ -39,6 +44,7 @@ export function Products() {
       available_days: p.available_days || [0,1,2,3,4,5,6],
       show_for_office: p.show_for_office !== false,
       show_for_free: p.show_for_free !== false,
+      office_id: p.office_id || null,
     });
     setOpts(p.product_options || []);
     setEditing(p.id);
@@ -153,19 +159,50 @@ export function Products() {
               {/* 表示対象 */}
               <div className="form-group">
                 <label>表示対象</label>
-                <div style={{ display:'flex', gap:8, paddingTop:4 }}>
-                  {[['show_for_office','🏢 事業所会員'],['show_for_free','🙋 フリー会員']].map(([k, l]) => (
-                    <label key={k} style={{
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', paddingTop:4 }}>
+                  {[
+                    { key:'office', label:'🏢 事業所会員（全体）' },
+                    { key:'free',   label:'🙋 フリー会員' },
+                    { key:'exclusive', label:'🔒 事業所専用' },
+                  ].map(opt => (
+                    <label key={opt.key} style={{
                       display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13,
-                      background: form[k] ? '#E1F5EE' : '#f5f4f0',
-                      border: `1px solid ${form[k] ? '#9FE1CB' : '#e0dfd8'}`,
+                      background: (opt.key==='exclusive' ? !!form.office_id : opt.key==='office' ? form.show_for_office : form.show_for_free) ? '#E1F5EE' : '#f5f4f0',
+                      border: `1px solid ${(opt.key==='exclusive' ? !!form.office_id : opt.key==='office' ? form.show_for_office : form.show_for_free) ? '#9FE1CB' : '#e0dfd8'}`,
                       borderRadius:6, padding:'8px 16px'
                     }}>
-                      <input type="checkbox" checked={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.checked}))} style={{ accentColor:'#1D9E75', width:16, height:16 }} />
-                      {l}
+                      <input type="checkbox"
+                        checked={opt.key==='exclusive' ? !!form.office_id : opt.key==='office' ? form.show_for_office : form.show_for_free}
+                        onChange={e => {
+                          if (opt.key === 'exclusive') {
+                            if (e.target.checked) {
+                              setForm(f => ({...f, office_id: offices[0]?.id || null, show_for_office: false, show_for_free: false}));
+                            } else {
+                              setForm(f => ({...f, office_id: null, show_for_office: true}));
+                            }
+                          } else if (opt.key === 'office') {
+                            setForm(f => ({...f, show_for_office: e.target.checked, office_id: null}));
+                          } else {
+                            setForm(f => ({...f, show_for_free: e.target.checked, office_id: null}));
+                          }
+                        }}
+                        style={{ accentColor:'#1D9E75', width:16, height:16 }} />
+                      {opt.label}
                     </label>
                   ))}
                 </div>
+                {/* 事業所専用選択時：事業所セレクト */}
+                {!!form.office_id && (
+                  <div style={{ marginTop:10 }}>
+                    <select value={form.office_id || ''} onChange={e => setForm(f => ({...f, office_id: e.target.value}))}
+                      style={{ padding:'8px 12px', border:'1px solid #9FE1CB', borderRadius:8, fontSize:14, background:'#E1F5EE', width:'100%' }}>
+                      {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                    <div style={{ fontSize:11, color:'#0F6E56', marginTop:4 }}>
+                      ✓ この事業所の会員にのみ表示されます
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* オプション */}
