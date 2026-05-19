@@ -127,7 +127,7 @@ router.get('/my', authMiddleware, async (req, res) => {
 
 // 注文作成
 router.post('/', authMiddleware, async (req, res) => {
-  const { product_id, quantity, delivery_date, options, note } = req.body;
+  const { product_id, quantity, delivery_date, options, note, payment_method } = req.body;
   const check = await checkDeadline(delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: check.reason });
 
@@ -139,7 +139,7 @@ router.post('/', authMiddleware, async (req, res) => {
   const product_name = product.name;
 
   const { data: order, error } = await supabase.from('orders')
-    .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false, note: note || null })
+    .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false, note: note || null, payment_method: payment_method || 'cash' })
     .select().single();
   if (error) return res.status(400).json({ error: error.message });
 
