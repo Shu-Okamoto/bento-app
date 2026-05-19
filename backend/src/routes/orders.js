@@ -77,13 +77,16 @@ async function checkDeadline(delivery_date, office_id) {
   let deadline;
 
   if (deadlineType === 'same_day') {
-    // 当日のdeadlineHour時 JST = UTC-(9-deadlineHour)
+    // 当日のdeadlineHour時（JST → UTC）
     deadline = new Date(Date.UTC(dy, dm - 1, dd, deadlineHour - 9, 0, 0));
   } else {
-    // 前営業日のdeadlineHour時
+    // prev_day または prev_day_custom → 前営業日のdeadlineHour時
+    // prev_day のデフォルトはhour=15
+    const hour = (deadlineType === 'prev_day') ? 15 : deadlineHour;
     const prevDay = getPrevBizDay(delivery_date, settings);
     const [py, pm, pd] = prevDay.split('-').map(Number);
-    deadline = new Date(Date.UTC(py, pm - 1, pd, deadlineHour - 9, 0, 0));
+    deadline = new Date(Date.UTC(py, pm - 1, pd, hour - 9, 0, 0));
+    deadlineHour = hour;
     const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
     console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}`);
   }
@@ -135,10 +138,6 @@ router.post('/', authMiddleware, async (req, res) => {
   const total_price = (product.price + optTotal) * quantity;
   const product_name = product.name;
 
-  if (req.user.member_type === 'free' && total_price < 3000) {
-    return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
-  }
-
   const { data: order, error } = await supabase.from('orders')
     .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false, note: note || null })
     .select().single();
@@ -179,10 +178,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
   const total_price = (product.price + optTotal) * quantity;
-
-  if (req.user.member_type === 'free' && total_price < 3000) {
-    return res.status(400).json({ error: `フリー会員は合計3,000円以上から注文できます（現在：¥${total_price.toLocaleString()}）` });
-  }
 
   const { data, error } = await supabase.from('orders')
     .update({ product_id, quantity, delivery_date, total_price, note: note || null })
