@@ -22,10 +22,11 @@ router.get('/', authMiddleware, async (req, res) => {
 
   // 会員種別で表示制限
   const filtered = data.filter(p => {
-    // 事業所専用商品：該当事業所のみ表示
-    if (p.office_id) {
-      return p.office_id === officeId;
+    // ① 事業所専用商品は該当事業所のみ表示（他は全て除外）
+    if (p.office_id !== null && p.office_id !== undefined) {
+      return String(p.office_id) === String(officeId);
     }
+    // ② 以下は共通商品（office_id が null）の判定
     if (memberType === 'free') return p.show_for_free !== false;
     // 事業所会員：事業所向け商品 + show_free_productsがONならフリー向けも
     if (p.show_for_office !== false) return true;
