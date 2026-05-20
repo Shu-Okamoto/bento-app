@@ -24,7 +24,8 @@ import {
   Billing   as AdminBilling,
   Settings  as AdminSettings,
   PrintPage,
-  BillingPrintPage
+  BillingPrintPage,
+  Announcements
 } from './pages/admin/index.js';
 
 // Cookie操作ユーティリティ
