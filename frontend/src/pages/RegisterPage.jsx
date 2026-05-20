@@ -10,18 +10,17 @@ export default function RegisterPage() {
   const slug = paramSlug || office?.slug;
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', department: '', phone: '', address: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ name: '', department: '', phone: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [officeName, setOfficeName] = useState('');
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  // 事業所名を取得
   useEffect(() => {
     if (office?.name) {
       setOfficeName(office.name);
-    } else if (slug) {
+    } else if (slug && slug !== 'free') {
       api.get(`/offices/slug/${slug}`)
         .then(data => setOfficeName(data.name))
         .catch(() => {});
@@ -73,10 +72,6 @@ export default function RegisterPage() {
           <div className="form-group">
             <label>電話番号 *</label>
             <input value={form.phone} onChange={set('phone')} placeholder="090-1234-5678" required type="text" inputMode="tel" />
-          </div>
-          <div className="form-group">
-            <label>住所・お届け先</label>
-            <input value={form.address} onChange={set('address')} placeholder="東京都千代田区〇〇1-2-3" />
           </div>
           <div className="form-group">
             <label>パスワード *</label>

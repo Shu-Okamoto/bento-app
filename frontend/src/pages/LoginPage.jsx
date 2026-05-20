@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOffice } from '../context/OfficeContext';
@@ -7,14 +7,25 @@ import { api } from '../utils/api';
 export default function LoginPage() {
   const { slug: paramSlug } = useParams();
   const { office } = useOffice();
-  // URLパラメータ優先、なければサブドメインから取得
   const slug = paramSlug || office?.slug;
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ phone: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [officeName, setOfficeName] = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  // 事業所名を取得
+  useEffect(() => {
+    if (office?.name) {
+      setOfficeName(office.name);
+    } else if (slug && slug !== 'free') {
+      api.get(`/offices/slug/${slug}`)
+        .then(data => setOfficeName(data.name))
+        .catch(() => {});
+    }
+  }, [slug, office]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,26 +34,28 @@ export default function LoginPage() {
       const { token, user } = await api.post('/auth/login', { office_slug: slug, ...form });
       if (slug) {
         localStorage.setItem('office_slug', slug);
-        // Cookie にも保存（iOS ITP対策）
         const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
         document.cookie = 'office_slug=' + slug + '; expires=' + expires + '; path=/; SameSite=Lax';
       }
       login(token, user);
-      // 事業所スラグに応じた home へリダイレクト
       if (slug === 'free') navigate('/free/home', { replace: true });
       else if (slug) navigate(`/o/${slug}/home`, { replace: true });
       else navigate('/', { replace: true });
-    } catch (err) {
+    } catch(err) {
       setError(err.message);
     } finally { setLoading(false); }
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '60px auto', padding: 16 }}>
+    <div style={{ maxWidth: 400, margin: '40px auto', padding: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <img src="/logo.JPG" alt="みかわ" style={{ width: 140, margin: '0 auto 12px', display: 'block' }} />
-        <h1 style={{ fontSize: 20, fontWeight: 700 }}>みかわ弁当注文アプリ</h1>
-        <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>事業所会員ログイン</p>
+        {officeName && (
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#1a1a1a', marginBottom: 4 }}>
+            {officeName}
+          </p>
+        )}
+        <h1 style={{ fontSize: 15, fontWeight: 600, color: '#555', marginTop: 4 }}>みかわ弁当注文アプリ</h1>
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
@@ -59,11 +72,9 @@ export default function LoginPage() {
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
-        {slug && (
-          <p style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: '#666' }}>
-            初めての方は <a href={`/o/${slug}/register`} style={{ color: '#1D9E75' }}>会員登録</a>
-          </p>
-        )}
+        <p style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: '#666' }}>
+          初めての方は <a href={`/o/${slug}/register`} style={{ color: '#1D9E75' }}>会員登録</a>
+        </p>
       </div>
     </div>
   );
