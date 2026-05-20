@@ -249,8 +249,13 @@ export function Products() {
                 <div style={{ fontSize:11, color:'#1D9E75', marginBottom:2 }}>
                   {p.available_days && p.available_days.length < 7 ? `提供曜日：${p.available_days.map(d=>DAYS[d]).join('・')}` : '毎日提供'}
                 </div>
-                <div style={{ fontSize:11, color:'#666', marginBottom:10 }}>
-                  表示：{[p.show_for_office!==false&&'事業所', p.show_for_free!==false&&'フリー'].filter(Boolean).join('・')||'非表示'}
+                <div style={{ fontSize:11, marginBottom:10 }}>
+                  {p.office_id
+                    ? <span style={{ background:'#fff0f0', color:'#c0392b', padding:'2px 8px', borderRadius:99, fontSize:11, display:'inline-block', fontWeight:600 }}>
+                        🔒 {offices.find(o => String(o.id) === String(p.office_id))?.name || '事業所'}様専用
+                      </span>
+                    : <span style={{ color:'#666' }}>表示：{[p.show_for_office !== false && '事業所', p.show_for_free !== false && 'フリー'].filter(Boolean).join('・') || '非表示'}</span>
+                  }
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
                   <button className="btn btn-secondary" style={{ flex:1, fontSize:12, padding:'6px' }} onClick={() => startEdit(p)}>編集</button>
