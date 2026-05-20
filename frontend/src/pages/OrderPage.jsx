@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { tomorrowJST, formatDeadlineJa, getDayOfWeek } from '../utils/date';
+import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
@@ -202,7 +203,7 @@ export default function OrderPage() {
 
   return (
     <div style={{ maxWidth:640, margin:'0 auto', padding:16 }}>
-
+       <AnnouncementBanner />
       {/* ゲスト向けバナー */}
       {isGuest && (
         <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
