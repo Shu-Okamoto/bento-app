@@ -20,15 +20,21 @@ router.get('/', authMiddleware, async (req, res) => {
     showFreeProducts = office?.show_free_products || false;
   }
 
+  // この事業所の専用商品があるかチェック
+  const hasExclusive = memberType === 'office' && officeId
+    ? data.some(p => p.office_id && String(p.office_id) === String(officeId))
+    : false;
+
   // 会員種別で表示制限
   const filtered = data.filter(p => {
-    // ① 事業所専用商品は該当事業所のみ表示（他は全て除外）
+    // 事業所専用商品
     if (p.office_id !== null && p.office_id !== undefined) {
       return String(p.office_id) === String(officeId);
     }
-    // ② 以下は共通商品（office_id が null）の判定
+    // 専用商品がある事業所は、共通商品（office_id=null）を表示しない
+    if (hasExclusive) return false;
+    // 以下は通常の判定
     if (memberType === 'free') return p.show_for_free !== false;
-    // 事業所会員：事業所向け商品 + show_free_productsがONならフリー向けも
     if (p.show_for_office !== false) return true;
     if (showFreeProducts && p.show_for_free !== false) return true;
     return false;
