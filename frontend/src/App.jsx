@@ -19,6 +19,7 @@ import {
   Dashboard as AdminDashboard,
   Orders    as AdminOrders,
   Products  as AdminProducts,
+  Announcements as Announccements,
   Members   as AdminMembers,
   Offices   as AdminOffices,
   Billing   as AdminBilling,
