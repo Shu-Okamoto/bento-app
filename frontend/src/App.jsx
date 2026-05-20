@@ -19,7 +19,6 @@ import {
   Dashboard as AdminDashboard,
   Orders    as AdminOrders,
   Products  as AdminProducts,
-  Announcements as Announccements,
   Members   as AdminMembers,
   Offices   as AdminOffices,
   Billing   as AdminBilling,
@@ -70,6 +69,16 @@ function FreeScope() {
     setCookie('office_slug', 'free');
   }, []);
   return <Outlet />;
+}
+
+// フリー会員：ログイン状態に応じてレイアウト切替
+//   ログイン済み → MemberLayoutで下部ナビ表示
+//   未ログイン   → 裸のOutletでゲスト閲覧
+function ConditionalFreeLayout() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <MemberLayout />;  // ログイン済み → 下部ナビあり
+  return <Outlet />;                   // ゲスト → ナビなし
 }
 
 // 事業所スコープ
@@ -139,7 +148,6 @@ export default function App() {
                 <Route index              element={<AdminDashboard />} />
                 <Route path="orders"      element={<AdminOrders />} />
                 <Route path="products"    element={<AdminProducts />} />
-                <Route path="announcements" element={<Announcements />} />
                 <Route path="members"     element={<AdminMembers />} />
                 <Route path="offices"     element={<AdminOffices />} />
                 <Route path="billing"     element={<AdminBilling />} />
@@ -152,8 +160,10 @@ export default function App() {
               <Route path="/free/register" element={<FreeRegisterPage />} />
               <Route path="/free/login"    element={<FreeLoginPage />} />
               <Route path="/free" element={<FreeScope />}>
-                {/* home はゲストでもアクセス可（注文時に登録促進） */}
-                <Route path="home"    element={<OrderPage />} />
+                {/* home はゲストアクセス可、それ以外はログイン必須 */}
+                <Route element={<ConditionalFreeLayout />}>
+                  <Route path="home" element={<OrderPage />} />
+                </Route>
                 <Route element={<MemberRoute><MemberLayout /></MemberRoute>}>
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
