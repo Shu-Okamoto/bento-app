@@ -1,5 +1,7 @@
 import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import CartModal from './CartModal';
 
 export default function MemberLayout() {
   const { user, logout } = useAuth();
@@ -8,6 +10,7 @@ export default function MemberLayout() {
   const officeSlug = paramSlug || savedSlug;
   const isFree = officeSlug === 'free' || window.location.pathname.startsWith('/free');
   const base = isFree ? '/free' : `/o/${officeSlug}`;
+  const { items, setOpen } = useCart();
 
   function handleLogout() {
     logout();
@@ -67,6 +70,32 @@ export default function MemberLayout() {
             {label}
           </NavLink>
         ))}
+        {isFree && (
+          <button onClick={() => setOpen(true)} style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 2, fontSize: 11,
+            color: items.length > 0 ? '#1D9E75' : '#888',
+            background: 'none', border: 'none', cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            fontWeight: items.length > 0 ? 600 : 400,
+          }}>
+            <span style={{ fontSize: 22, position: 'relative' }}>
+              🛒
+              {items.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -10,
+                  background: '#e74c3c', color: 'white',
+                  fontSize: 10, fontWeight: 700,
+                  minWidth: 16, height: 16, borderRadius: 8,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px',
+                }}>{items.length}</span>
+              )}
+            </span>
+            カート
+          </button>
+        )}
         <button onClick={handleLogout} style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
@@ -78,6 +107,8 @@ export default function MemberLayout() {
           ログアウト
         </button>
       </nav>
+
+      {isFree && <CartModal />}
     </div>
   );
 }

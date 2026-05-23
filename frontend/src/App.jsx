@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OfficeProvider, useOffice } from './context/OfficeContext';
+import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './components/Toast';
 
 import RegisterPage      from './pages/RegisterPage';
@@ -140,6 +141,7 @@ export default function App() {
   return (
     <AuthProvider>
       <OfficeProvider>
+        <CartProvider>
         <BrowserRouter>
           <ToastProvider>
             <Routes>
@@ -193,6 +195,7 @@ export default function App() {
             </Routes>
           </ToastProvider>
         </BrowserRouter>
+        </CartProvider>
       </OfficeProvider>
     </AuthProvider>
   );
