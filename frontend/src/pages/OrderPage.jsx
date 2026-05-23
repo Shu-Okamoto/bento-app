@@ -4,7 +4,6 @@ import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { tomorrowJST, formatDeadlineJa, getDayOfWeek } from '../utils/date';
-import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
@@ -58,19 +57,9 @@ export default function OrderPage() {
   // カート
   const [cart, setCart] = useState([]); // [{ product, options, qty, note }]
   const [showCart, setShowCart] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [cartEnabled, setCartEnabled] = useState(isFreeRoute); // フリーは常にON
 
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
-  useEffect(() => {
-    // 事業所のカート設定を取得
-    if (!isFreeRoute && user?.office_id) {
-      api.get(`/offices/${user.office_id}`)
-        .then(o => setCartEnabled(o.cart_enabled || false))
-        .catch(() => {});
-    }
-  }, [user]);
 
   async function loadProducts() {
     try {
@@ -124,35 +113,6 @@ export default function OrderPage() {
     return s + (item.product.price + optT) * item.qty;
   }, 0);
 
-  // カートなしの直接注文（事業所でcart_enabledがOFFの場合）
-  async function handleDirectOrder() {
-    if (!selected) return showToast('商品を選んでください', 'warn');
-    if (!checkProductAvailableForDate(selected, date)) {
-      const dow = DAY_LABELS[getDayOfWeek(date)];
-      showToast(`${selected.name}は${dow}曜日の注文はできません`, 'warn');
-      return;
-    }
-    if (!deadlineInfo?.allowed) {
-      showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
-      return;
-    }
-    setLoading(true);
-    try {
-      await api.post('/orders', {
-        product_id: selected.id,
-        quantity: qty,
-        delivery_date: date,
-        options: selectedOpts,
-        note: note || null,
-        payment_method: 'cash'
-      });
-      showToast('注文が完了しました！', 'success');
-      setSelectedOpts([]); setQty(1); setNote('');
-    } catch(err) {
-      showToast(err.message, 'error');
-    } finally { setLoading(false); }
-  }
-
   // カートに追加
   function addToCart() {
     if (isGuest) { setShowModal(true); return; }
@@ -189,8 +149,7 @@ export default function OrderPage() {
           quantity: item.qty,
           delivery_date: date,
           options: item.options,
-          note: item.note || null,
-          payment_method: isFreeRoute ? paymentMethod : 'cash'
+          note: item.note || null
         })
       ));
       showToast(`${cart.length}件の注文が完了しました！`, 'success');
@@ -203,7 +162,7 @@ export default function OrderPage() {
 
   return (
     <div style={{ maxWidth:640, margin:'0 auto', padding:16 }}>
-       <AnnouncementBanner />
+
       {/* ゲスト向けバナー */}
       {isGuest && (
         <div style={{ background:'#E1F5EE', border:'1px solid #9FE1CB', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
@@ -221,7 +180,7 @@ export default function OrderPage() {
       {/* ヘッダー */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
         <h2 style={{ fontSize:16, fontWeight:700 }}>🍱 メニュー</h2>
-        {!isGuest && cartEnabled && cart.length > 0 && (
+        {!isGuest && cart.length > 0 && (
           <button onClick={() => setShowCart(true)} style={{
             background:'#1D9E75', color:'white', border:'none', borderRadius:10,
             padding:'8px 14px', fontSize:13, fontWeight:700, cursor:'pointer',
@@ -304,15 +263,9 @@ export default function OrderPage() {
                 style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', outline:'none', resize:'vertical', fontSize:14 }} />
             </div>
           )}
-          {cartEnabled ? (
-            <button className="btn btn-primary" style={{ width:'100%' }} onClick={addToCart}>
-              {isGuest ? 'カートに追加（要会員登録）' : '🛒 カートに追加'}
-            </button>
-          ) : (
-            <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleDirectOrder}>
-              注文を確定する
-            </button>
-          )}
+          <button className="btn btn-primary" style={{ width:'100%' }} onClick={addToCart}>
+            {isGuest ? 'カートに追加（要会員登録）' : '🛒 カートに追加'}
+          </button>
         </div>
       )}
 
@@ -348,45 +301,68 @@ export default function OrderPage() {
               <span style={{ fontSize:18, fontWeight:700, color:'#1D9E75' }}>¥{cartTotal.toLocaleString()}</span>
             </div>
 
-            <div style={{ fontSize:13, color:'#666', marginBottom:14, textAlign:'center' }}>
-              お届け日：{date}
-              {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
-            </div>
+            {/* 複数日モード切替（事業所会員のみ） */}
+            {!isFreeRoute && (
+              <div style={{ marginBottom:14, padding:'10px 14px', background:'#f5f4f0', borderRadius:10 }}>
+                <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, fontWeight:600 }}>
+                  <input type="checkbox" checked={multiDayMode}
+                    onChange={e => {
+                      setMultiDayMode(e.target.checked);
+                      setSelectedDates([]);
+                    }}
+                    style={{ accentColor:'#1D9E75', width:18, height:18 }} />
+                  📆 複数日にまとめて注文する
+                </label>
+              </div>
+            )}
 
-            {/* フリー会員のみ支払方法選択 */}
-            {isFreeRoute && (
-              <div className="form-group" style={{ marginBottom:16 }}>
-                <label style={{ fontWeight:600, marginBottom:8, display:'block' }}>お支払方法</label>
-                <div style={{ display:'flex', gap:10 }}>
-                  {[
-                    { value:'cash',   label:'💴 当日現金払い', desc:'お届け時にお支払い' },
-                    { value:'credit', label:'💳 クレジット決済', desc:'近日対応予定' },
-                  ].map(opt => (
-                    <label key={opt.value} style={{
-                      flex:1, display:'flex', flexDirection:'column', gap:4,
-                      cursor: opt.value === 'credit' ? 'not-allowed' : 'pointer',
-                      background: paymentMethod === opt.value ? '#E1F5EE' : '#f5f4f0',
-                      border: `2px solid ${paymentMethod === opt.value ? '#1D9E75' : '#e0dfd8'}`,
-                      borderRadius:10, padding:'10px 12px',
-                      opacity: opt.value === 'credit' ? 0.5 : 1,
-                    }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <input type="radio" name="payment" value={opt.value}
-                          checked={paymentMethod === opt.value}
-                          onChange={() => opt.value !== 'credit' && setPaymentMethod(opt.value)}
-                          disabled={opt.value === 'credit'}
-                          style={{ accentColor:'#1D9E75' }} />
-                        <span style={{ fontSize:13, fontWeight:600 }}>{opt.label}</span>
-                      </div>
-                      <span style={{ fontSize:11, color:'#888', paddingLeft:20 }}>{opt.desc}</span>
-                    </label>
-                  ))}
+            {/* 1日モード */}
+            {!multiDayMode && (
+              <div style={{ fontSize:13, color:'#666', marginBottom:14, textAlign:'center' }}>
+                お届け日：{date}
+                {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
+              </div>
+            )}
+
+            {/* 複数日モード */}
+            {multiDayMode && !isFreeRoute && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>
+                  お届け日を選んでください（{selectedDates.length}日選択中）
                 </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
+                  {getNext14Days().map(d => {
+                    const isSelected = selectedDates.includes(d);
+                    const [, m, dd] = d.split('-');
+                    const dow = DAY_LABELS[getDayOfWeek(d)];
+                    return (
+                      <button key={d} onClick={() => toggleDateSelection(d)}
+                        style={{
+                          padding:'8px 6px', borderRadius:8,
+                          border:`2px solid ${isSelected ? '#1D9E75' : '#e0dfd8'}`,
+                          background: isSelected ? '#E1F5EE' : 'white',
+                          color: isSelected ? '#0F6E56' : '#555',
+                          fontSize:11, cursor:'pointer', fontWeight: isSelected ? 700 : 500,
+                        }}>
+                        {Number(m)}/{Number(dd)}<br/>({dow})
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedDates.length > 0 && (
+                  <div style={{ fontSize:11, color:'#888', marginTop:8, textAlign:'center' }}>
+                    各日付ごとに同じカート内容で注文します（合計 {cart.length}商品 × {selectedDates.length}日 = {cart.length * selectedDates.length}件）
+                  </div>
+                )}
               </div>
             )}
 
             <button className="btn btn-primary" style={{ width:'100%', fontSize:16, padding:'14px' }} onClick={handleOrder} disabled={loading}>
-              {loading ? '注文中...' : `${cart.length}件をまとめて注文する`}
+              {loading
+                ? '注文中...'
+                : multiDayMode && !isFreeRoute && selectedDates.length > 0
+                  ? `${cart.length}商品 × ${selectedDates.length}日 (${cart.length * selectedDates.length}件) を注文する`
+                  : `${cart.length}件をまとめて注文する`}
             </button>
           </div>
         </div>
