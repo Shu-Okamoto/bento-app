@@ -58,12 +58,16 @@ export function Members() {
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.address||'—'}</td>
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.created_at?.split('T')[0]}</td>
                 <td style={{ padding:'10px 12px' }}>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ padding:'4px 10px', fontSize:12 }}
-                    onClick={() => toggleOfficeAdmin(m)}>
-                    {m.is_office_admin ? '解除' : '任命'}
-                  </button>
+                  {m.member_type === 'free' ? (
+                    <span style={{ color:'#aaa', fontSize:12 }}>—</span>
+                  ) : (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding:'4px 10px', fontSize:12 }}
+                      onClick={() => toggleOfficeAdmin(m)}>
+                      {m.is_office_admin ? '解除' : '任命'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

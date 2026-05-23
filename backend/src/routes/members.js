@@ -20,7 +20,7 @@ router.put('/me', authMiddleware, async (req, res) => {
 // 会員一覧（管理者）
 router.get('/', adminMiddleware, async (req, res) => {
   const { office_id } = req.query;
-  let query = supabase.from('members').select('id,name,department,phone,address,is_office_admin,created_at,offices(name)').order('name');
+  let query = supabase.from('members').select('id,name,department,phone,address,member_type,is_office_admin,created_at,offices(name)').order('name');
   if (office_id) query = query.eq('office_id', office_id);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
