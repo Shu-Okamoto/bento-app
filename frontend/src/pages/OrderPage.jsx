@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -67,6 +67,9 @@ export default function OrderPage() {
   const [multiDates, setMultiDates] = useState([]); // ['YYYY-MM-DD', ...]
   const [dateInfoMap, setDateInfoMap] = useState({}); // { date: { allowed, reason } }
   const [loadingDates, setLoadingDates] = useState(false);
+
+  // 二重送信ガード（React の disabled だけだとレンダリング前の連打を防げない）
+  const submittingRef = useRef(false);
 
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
@@ -164,6 +167,7 @@ export default function OrderPage() {
 
   // カートなしの直接注文（事業所でcart_enabledがOFFの場合）
   async function handleDirectOrder() {
+    if (submittingRef.current) return;
     if (!selected) return showToast('商品を選んでください', 'warn');
 
     // 複数日モード
@@ -174,6 +178,7 @@ export default function OrderPage() {
         showToast(`${selected.name}は ${ngDays.map(d => d.slice(5)).join('・')} の曜日には注文できません`, 'warn');
         return;
       }
+      submittingRef.current = true;
       setLoading(true);
       try {
         await Promise.all(multiDates.map(d =>
@@ -190,7 +195,7 @@ export default function OrderPage() {
         setSelectedOpts([]); setQty(1); setNote(''); setMultiDates([]);
       } catch(err) {
         showToast(err.message, 'error');
-      } finally { setLoading(false); }
+      } finally { setLoading(false); submittingRef.current = false; }
       return;
     }
 
@@ -203,6 +208,7 @@ export default function OrderPage() {
       showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
       await api.post('/orders', {
@@ -217,7 +223,7 @@ export default function OrderPage() {
       setSelectedOpts([]); setQty(1); setNote('');
     } catch(err) {
       showToast(err.message, 'error');
-    } finally { setLoading(false); }
+    } finally { setLoading(false); submittingRef.current = false; }
   }
 
   // カートに追加
@@ -241,6 +247,7 @@ export default function OrderPage() {
 
   // 注文確定
   async function handleOrder() {
+    if (submittingRef.current) return;
     if (isGuest) { setShowModal(true); return; }
     if (cart.length === 0) return showToast('カートに商品を追加してください', 'warn');
 
@@ -259,6 +266,7 @@ export default function OrderPage() {
         showToast(`${first.name}は${first.d.slice(5)}の曜日には注文できません`, 'warn');
         return;
       }
+      submittingRef.current = true;
       setLoading(true);
       try {
         const ops = [];
@@ -281,12 +289,25 @@ export default function OrderPage() {
         setShowCart(false);
       } catch(err) {
         showToast(err.message, 'error');
-      } finally { setLoading(false); }
+      } finally { setLoading(false); submittingRef.current = false; }
       return;
     }
 
+    // 単日モード：カート内の各日付の締切を事前チェック
+    const uniqueDates = [...new Set(cart.map(it => it.delivery_date || date))];
+    submittingRef.current = true;
     setLoading(true);
     try {
+      const checks = await Promise.all(uniqueDates.map(d =>
+        api.get(`/orders/deadline-check?delivery_date=${d}`)
+          .then(r => ({ d, ...r }))
+          .catch(() => ({ d, allowed: false, reason: 'チェックに失敗しました' }))
+      ));
+      const ng = checks.find(c => !c.allowed);
+      if (ng) {
+        showToast(`${formatDateJa(ng.d)}：${ng.reason}`, 'error');
+        return;
+      }
       // カート内の商品を1件ずつ注文（各商品の delivery_date を使用）
       await Promise.all(cart.map(item =>
         api.post('/orders', {
@@ -303,7 +324,7 @@ export default function OrderPage() {
       setShowCart(false);
     } catch(err) {
       showToast(err.message, 'error');
-    } finally { setLoading(false); }
+    } finally { setLoading(false); submittingRef.current = false; }
   }
 
   return (
