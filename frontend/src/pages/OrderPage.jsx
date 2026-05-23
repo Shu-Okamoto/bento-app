@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { tomorrowJST, formatDeadlineJa, getDayOfWeek } from '../utils/date';
+import { tomorrowJST, formatDeadlineJa, formatDateJa, getDayOfWeek } from '../utils/date';
 import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
@@ -61,8 +61,30 @@ export default function OrderPage() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cartEnabled, setCartEnabled] = useState(isFreeRoute); // フリーは常にON
 
+  // 複数日モード（事業所会員のみ）
+  const canUseMultiDay = !!user && !isFreeRoute;
+  const [multiDateMode, setMultiDateMode] = useState(false);
+  const [multiDates, setMultiDates] = useState([]); // ['YYYY-MM-DD', ...]
+  const [dateInfoMap, setDateInfoMap] = useState({}); // { date: { allowed, reason } }
+  const [loadingDates, setLoadingDates] = useState(false);
+
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user) checkDeadline(date, true); }, [date, user]);
+
+  // 複数日モード ON時：翌日から14日分の締切情報を一括取得
+  useEffect(() => {
+    if (!multiDateMode || !canUseMultiDay) return;
+    const dates = getNext14Days();
+    setLoadingDates(true);
+    Promise.all(dates.map(d =>
+      api.get(`/orders/deadline-check?delivery_date=${d}`)
+        .then(r => [d, r])
+        .catch(() => [d, { allowed: false, reason: 'エラー' }])
+    )).then(entries => {
+      setDateInfoMap(Object.fromEntries(entries));
+      setLoadingDates(false);
+    });
+  }, [multiDateMode, canUseMultiDay]);
   useEffect(() => {
     // 事業所のカート設定を取得
     if (!isFreeRoute && user?.office_id) {
@@ -97,6 +119,22 @@ export default function OrderPage() {
     }
   }
 
+  function getNext14Days() {
+    const dates = [];
+    const now = new Date();
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    jst.setUTCDate(jst.getUTCDate() + 1);
+    for (let i = 0; i < 14; i++) {
+      dates.push(jst.toISOString().split('T')[0]);
+      jst.setUTCDate(jst.getUTCDate() + 1);
+    }
+    return dates;
+  }
+
+  function toggleMultiDate(d) {
+    setMultiDates(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  }
+
   function checkProductAvailableForDate(product, deliveryDate) {
     if (!product) return false;
     if (!product.available_days || product.available_days.length === 0) return true;
@@ -127,6 +165,35 @@ export default function OrderPage() {
   // カートなしの直接注文（事業所でcart_enabledがOFFの場合）
   async function handleDirectOrder() {
     if (!selected) return showToast('商品を選んでください', 'warn');
+
+    // 複数日モード
+    if (multiDateMode) {
+      if (multiDates.length === 0) return showToast('日付を1つ以上選んでください', 'warn');
+      const ngDays = multiDates.filter(d => !checkProductAvailableForDate(selected, d));
+      if (ngDays.length > 0) {
+        showToast(`${selected.name}は ${ngDays.map(d => d.slice(5)).join('・')} の曜日には注文できません`, 'warn');
+        return;
+      }
+      setLoading(true);
+      try {
+        await Promise.all(multiDates.map(d =>
+          api.post('/orders', {
+            product_id: selected.id,
+            quantity: qty,
+            delivery_date: d,
+            options: selectedOpts,
+            note: note || null,
+            payment_method: 'cash'
+          })
+        ));
+        showToast(`${multiDates.length}日分の注文が完了しました！`, 'success');
+        setSelectedOpts([]); setQty(1); setNote(''); setMultiDates([]);
+      } catch(err) {
+        showToast(err.message, 'error');
+      } finally { setLoading(false); }
+      return;
+    }
+
     if (!checkProductAvailableForDate(selected, date)) {
       const dow = DAY_LABELS[getDayOfWeek(date)];
       showToast(`${selected.name}は${dow}曜日の注文はできません`, 'warn');
@@ -176,6 +243,48 @@ export default function OrderPage() {
   async function handleOrder() {
     if (isGuest) { setShowModal(true); return; }
     if (cart.length === 0) return showToast('カートに商品を追加してください', 'warn');
+
+    // 複数日モード（事業所会員のみ）
+    if (multiDateMode) {
+      if (multiDates.length === 0) return showToast('日付を1つ以上選んでください', 'warn');
+      // 商品の販売曜日チェック
+      const ngs = [];
+      multiDates.forEach(d => {
+        cart.forEach(item => {
+          if (!checkProductAvailableForDate(item.product, d)) ngs.push({ d, name: item.product.name });
+        });
+      });
+      if (ngs.length > 0) {
+        const first = ngs[0];
+        showToast(`${first.name}は${first.d.slice(5)}の曜日には注文できません`, 'warn');
+        return;
+      }
+      setLoading(true);
+      try {
+        const ops = [];
+        multiDates.forEach(d => {
+          cart.forEach(item => {
+            ops.push(api.post('/orders', {
+              product_id: item.product.id,
+              quantity: item.qty,
+              delivery_date: d,
+              options: item.options,
+              note: item.note || null,
+              payment_method: 'cash'
+            }));
+          });
+        });
+        await Promise.all(ops);
+        showToast(`${multiDates.length}日 × ${cart.length}件 = ${ops.length}件の注文が完了しました！`, 'success');
+        setCart([]);
+        setMultiDates([]);
+        setShowCart(false);
+      } catch(err) {
+        showToast(err.message, 'error');
+      } finally { setLoading(false); }
+      return;
+    }
+
     if (!deadlineInfo?.allowed) {
       showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
       return;
@@ -232,7 +341,7 @@ export default function OrderPage() {
         )}
       </div>
 
-      {deadlineInfo?.allowed && !isGuest && (
+      {deadlineInfo?.allowed && !isGuest && !multiDateMode && (
         <div style={{ background:'#e8f5ee', border:'1px solid #9FE1CB', borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:13, color:'#0F6E56', display:'flex', alignItems:'center', gap:8 }}>
           <span>✓</span>{`注文受付中 — 締切：${formatDeadlineJa(deadlineInfo.deadline)}まで`}
         </div>
@@ -240,9 +349,68 @@ export default function OrderPage() {
 
       {/* お届け日 */}
       <div className="form-group" style={{ marginBottom:14 }}>
-        <label>お届け日</label>
-        <input type="date" value={date} onChange={e => { setDate(e.target.value); if(user) checkDeadline(e.target.value, true); }} min={tomorrowJST()}
-          style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', fontSize:16 }} />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+          <label style={{ margin:0 }}>お届け日</label>
+          {canUseMultiDay && (
+            <div style={{ display:'inline-flex', background:'#f5f4f0', border:'1px solid #e0dfd8', borderRadius:99, padding:2 }}>
+              <button type="button" onClick={() => setMultiDateMode(false)}
+                style={{
+                  border:'none', padding:'5px 12px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: !multiDateMode ? '#1D9E75' : 'transparent',
+                  color: !multiDateMode ? 'white' : '#666',
+                }}>1日</button>
+              <button type="button" onClick={() => setMultiDateMode(true)}
+                style={{
+                  border:'none', padding:'5px 12px', borderRadius:99, fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: multiDateMode ? '#1D9E75' : 'transparent',
+                  color: multiDateMode ? 'white' : '#666',
+                }}>複数日</button>
+            </div>
+          )}
+        </div>
+
+        {!multiDateMode ? (
+          <input type="date" value={date} onChange={e => { setDate(e.target.value); if(user) checkDeadline(e.target.value, true); }} min={tomorrowJST()}
+            style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', fontSize:16 }} />
+        ) : (
+          <div>
+            <div style={{ fontSize:12, color:'#666', marginBottom:8 }}>
+              {loadingDates ? '日付を確認中…' : `選択：${multiDates.length}日`}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:6, maxHeight:280, overflowY:'auto', padding:8, border:'1px solid #e0dfd8', borderRadius:8, background:'#fafaf8' }}>
+              {getNext14Days().map(d => {
+                const info = dateInfoMap[d];
+                const allowed = info?.allowed === true;
+                const checked = multiDates.includes(d);
+                const reason = info && !allowed ? (info.reason || '受付不可') : '';
+                return (
+                  <label key={d}
+                    style={{
+                      display:'flex', alignItems:'center', gap:8, padding:'8px 10px',
+                      background: checked ? '#E1F5EE' : 'white',
+                      border:`1px solid ${checked ? '#1D9E75' : '#e0dfd8'}`,
+                      borderRadius:8,
+                      cursor: allowed ? 'pointer' : 'not-allowed',
+                      opacity: allowed ? 1 : 0.5,
+                      fontSize:13,
+                    }}>
+                    <input type="checkbox"
+                      checked={checked}
+                      disabled={!allowed}
+                      onChange={() => toggleMultiDate(d)}
+                      style={{ accentColor:'#1D9E75', width:15, height:15 }} />
+                    <div style={{ flex:1, lineHeight:1.3 }}>
+                      <div style={{ fontWeight:600 }}>{formatDateJa(d)}</div>
+                      {!allowed && reason && (
+                        <div style={{ fontSize:10, color:'#999' }}>{reason}</div>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 商品一覧 */}
@@ -309,8 +477,12 @@ export default function OrderPage() {
               {isGuest ? 'カートに追加（要会員登録）' : '🛒 カートに追加'}
             </button>
           ) : (
-            <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleDirectOrder}>
-              注文を確定する
+            <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleDirectOrder} disabled={loading}>
+              {loading
+                ? '注文中...'
+                : multiDateMode
+                  ? `${multiDates.length}日分まとめて注文する`
+                  : '注文を確定する'}
             </button>
           )}
         </div>
@@ -349,8 +521,14 @@ export default function OrderPage() {
             </div>
 
             <div style={{ fontSize:13, color:'#666', marginBottom:14, textAlign:'center' }}>
-              お届け日：{date}
-              {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
+              {multiDateMode ? (
+                <span>お届け日：{multiDates.length === 0 ? '未選択' : multiDates.map(d => formatDateJa(d)).join('、')}</span>
+              ) : (
+                <>
+                  お届け日：{date}
+                  {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
+                </>
+              )}
             </div>
 
             {/* フリー会員のみ支払方法選択 */}
@@ -386,7 +564,11 @@ export default function OrderPage() {
             )}
 
             <button className="btn btn-primary" style={{ width:'100%', fontSize:16, padding:'14px' }} onClick={handleOrder} disabled={loading}>
-              {loading ? '注文中...' : `${cart.length}件をまとめて注文する`}
+              {loading
+                ? '注文中...'
+                : multiDateMode
+                  ? `${multiDates.length}日 × ${cart.length}件を注文する`
+                  : `${cart.length}件をまとめて注文する`}
             </button>
           </div>
         </div>
