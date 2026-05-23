@@ -229,7 +229,7 @@ export default function OrderPage() {
       showToast(`${selected.name}は${dow}曜日の注文はできません`, 'warn');
       return;
     }
-    setCart(prev => [...prev, { product: selected, options: selectedOpts, qty, note }]);
+    setCart(prev => [...prev, { product: selected, options: selectedOpts, qty, note, delivery_date: date }]);
     setSelectedOpts([]); setQty(1); setNote('');
     showToast(`${selected.name}をカートに追加しました`, 'success');
   }
@@ -285,18 +285,14 @@ export default function OrderPage() {
       return;
     }
 
-    if (!deadlineInfo?.allowed) {
-      showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
-      return;
-    }
     setLoading(true);
     try {
-      // カート内の商品を1件ずつ注文
+      // カート内の商品を1件ずつ注文（各商品の delivery_date を使用）
       await Promise.all(cart.map(item =>
         api.post('/orders', {
           product_id: item.product.id,
           quantity: item.qty,
-          delivery_date: date,
+          delivery_date: item.delivery_date || date,
           options: item.options,
           note: item.note || null,
           payment_method: isFreeRoute ? paymentMethod : 'cash'
@@ -504,6 +500,9 @@ export default function OrderPage() {
                 <div key={idx} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 0', borderBottom:'1px solid #f0efe8' }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:14, fontWeight:600 }}>{item.product.name}</div>
+                    {!multiDateMode && item.delivery_date && (
+                      <div style={{ fontSize:11, color:'#1D9E75', fontWeight:600 }}>📅 {formatDateJa(item.delivery_date)}</div>
+                    )}
                     {item.options.length > 0 && (
                       <div style={{ fontSize:12, color:'#888' }}>{item.options.map(o => o.name).join('・')}</div>
                     )}
@@ -524,10 +523,7 @@ export default function OrderPage() {
               {multiDateMode ? (
                 <span>お届け日：{multiDates.length === 0 ? '未選択' : multiDates.map(d => formatDateJa(d)).join('、')}</span>
               ) : (
-                <>
-                  お届け日：{date}
-                  {deadlineInfo && <span>　締切：{deadlineInfo.deadlineLabel || '前営業日15:00まで'}</span>}
-                </>
+                <span>各商品の指定日に配達します</span>
               )}
             </div>
 
