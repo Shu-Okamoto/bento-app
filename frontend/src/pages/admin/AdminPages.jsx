@@ -6,11 +6,24 @@ export function Members() {
   const [members, setMembers] = useState([]);
   const [offices, setOffices] = useState([]);
   const [officeId, setOfficeId] = useState('');
-  useEffect(() => { api.get('/offices').then(setOffices); }, []);
-  useEffect(() => {
+  function reload() {
     const q = officeId ? `?office_id=${officeId}` : '';
     api.get(`/members${q}`).then(setMembers);
-  }, [officeId]);
+  }
+  useEffect(() => { api.get('/offices').then(setOffices); }, []);
+  useEffect(() => { reload(); }, [officeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function toggleOfficeAdmin(m) {
+    const next = !m.is_office_admin;
+    const verb = next ? '担当者に任命' : '担当者を解除';
+    if (!confirm(`${m.name} を${verb}しますか？`)) return;
+    try {
+      await api.patch(`/members/${m.id}/office-admin`, { is_office_admin: next });
+      setMembers(prev => prev.map(x => x.id === m.id ? { ...x, is_office_admin: next } : x));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   return (
     <div>
@@ -21,24 +34,37 @@ export function Members() {
           {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
       </div>
-      <div style={{ background:'white', border:'1px solid #e0dfd8', borderRadius:12, overflow:'hidden' }}>
+      <div style={{ background:'white', border:'1px solid #e0dfd8', borderRadius:12, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
             <tr style={{ background:'#f5f4f0' }}>
-              {['氏名','所属','事業所','電話番号','住所','登録日'].map(h => (
-                <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontWeight:600, color:'#555' }}>{h}</th>
+              {['氏名','所属','事業所','電話番号','住所','登録日','担当者'].map(h => (
+                <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontWeight:600, color:'#555', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {members.map(m => (
               <tr key={m.id} style={{ borderTop:'1px solid #f0efe8' }}>
-                <td style={{ padding:'10px 12px', fontWeight:500 }}>{m.name}</td>
+                <td style={{ padding:'10px 12px', fontWeight:500 }}>
+                  {m.name}
+                  {m.is_office_admin && (
+                    <span className="badge badge-green" style={{ marginLeft:6 }}>担当者</span>
+                  )}
+                </td>
                 <td style={{ padding:'10px 12px' }}>{m.department||'—'}</td>
                 <td style={{ padding:'10px 12px' }}>{m.offices?.name}</td>
                 <td style={{ padding:'10px 12px' }}>{m.phone}</td>
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.address||'—'}</td>
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.created_at?.split('T')[0]}</td>
+                <td style={{ padding:'10px 12px' }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ padding:'4px 10px', fontSize:12 }}
+                    onClick={() => toggleOfficeAdmin(m)}>
+                    {m.is_office_admin ? '解除' : '任命'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

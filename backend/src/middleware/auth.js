@@ -19,4 +19,13 @@ function adminMiddleware(req, res, next) {
   });
 }
 
-module.exports = { authMiddleware, adminMiddleware };
+function officeAdminMiddleware(req, res, next) {
+  authMiddleware(req, res, () => {
+    if (req.user.role !== 'member' || !req.user.is_office_admin || !req.user.office_id) {
+      return res.status(403).json({ error: '事業所管理権限が必要です' });
+    }
+    next();
+  });
+}
+
+module.exports = { authMiddleware, adminMiddleware, officeAdminMiddleware };

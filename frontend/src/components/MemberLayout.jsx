@@ -38,7 +38,18 @@ export default function MemberLayout() {
           <img src="/logo.JPG" alt="みかわ" style={{ height: 32, objectFit: 'contain' }} />
           <span style={{ fontWeight: 600, fontSize: 14 }}>みかわ弁当注文</span>
         </div>
-        <span style={{ fontSize: 12, color: '#666' }}>{user?.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {user?.is_office_admin && !isFree && officeSlug && (
+            <NavLink to={`/o/${officeSlug}/manage`} style={{
+              fontSize: 11, color: '#1D9E75', fontWeight: 600,
+              background: '#E1F5EE', padding: '4px 10px', borderRadius: 12,
+              textDecoration: 'none',
+            }}>
+              事業所管理
+            </NavLink>
+          )}
+          <span style={{ fontSize: 12, color: '#666' }}>{user?.name}</span>
+        </div>
       </header>
 
       <main style={{

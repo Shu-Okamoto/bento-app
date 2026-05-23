@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const supabase = require('../utils/supabase');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware, officeAdminMiddleware } = require('../middleware/auth');
 const { notifyNewOrder } = require('../utils/notify');
 
 const JP_HOLIDAYS = [
@@ -232,6 +232,125 @@ router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
     .update({ is_delivered: true, delivered_at: new Date().toISOString() })
     .eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+// =============================================
+// 事業所担当者向けエンドポイント（自社office_idでスコープ固定）
+// office_id はJWTから取得する（リクエストパラメータからは受けない）
+// =============================================
+
+// 自社の注文一覧
+router.get('/office-admin', officeAdminMiddleware, async (req, res) => {
+  const { date } = req.query;
+  let query = supabase.from('orders')
+    .select('*, members(name, department, phone), products(name), order_options(name, price)')
+    .eq('office_id', req.user.office_id)
+    .order('delivery_date', { ascending: false });
+  if (date) query = query.eq('delivery_date', date);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+
+  // 代理担当者の名前を解決（proxied_by_member_id がある注文のみ）
+  const proxyIds = [...new Set(data.filter(o => o.proxied_by_member_id).map(o => o.proxied_by_member_id))];
+  let proxyMap = {};
+  if (proxyIds.length > 0) {
+    const { data: proxies } = await supabase.from('members').select('id, name').in('id', proxyIds);
+    proxyMap = Object.fromEntries((proxies || []).map(p => [p.id, p.name]));
+  }
+  const enriched = data.map(o => ({
+    ...o,
+    proxied_by_name: o.proxied_by_member_id ? (proxyMap[o.proxied_by_member_id] || null) : null,
+  }));
+  res.json(enriched);
+});
+
+// 代理注文（担当者が会員代わりに発注）
+router.post('/office-admin/proxy', officeAdminMiddleware, async (req, res) => {
+  const { member_id, product_id, quantity, delivery_date, options, note, payment_method } = req.body;
+  if (!member_id) return res.status(400).json({ error: '会員を指定してください' });
+
+  // 対象会員が自社所属か検証
+  const { data: target } = await supabase.from('members')
+    .select('id, office_id').eq('id', member_id).single();
+  if (!target || target.office_id !== req.user.office_id) {
+    return res.status(403).json({ error: '他の事業所の会員には代理注文できません' });
+  }
+
+  const check = await checkDeadline(delivery_date, req.user.office_id);
+  if (!check.allowed) return res.status(400).json({ error: check.reason });
+
+  const { data: product } = await supabase.from('products').select('price, name').eq('id', product_id).single();
+  if (!product) return res.status(404).json({ error: '商品が見つかりません' });
+
+  const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
+  const total_price = (product.price + optTotal) * quantity;
+
+  const { data: order, error } = await supabase.from('orders')
+    .insert({
+      member_id, office_id: req.user.office_id, product_id, quantity, delivery_date,
+      total_price, is_delivered: false, note: note || null,
+      payment_method: payment_method || 'cash',
+      proxied_by_member_id: req.user.id,
+    })
+    .select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  if (options && options.length > 0) {
+    await supabase.from('order_options').insert(options.map(o => ({ order_id: order.id, name: o.name, price: o.price })));
+  }
+
+  try {
+    const { data: member } = await supabase.from('members').select('name').eq('id', member_id).single();
+    const { data: office } = await supabase.from('offices').select('name').eq('id', req.user.office_id).single();
+    const { data: proxyAdmin } = await supabase.from('members').select('name').eq('id', req.user.id).single();
+    await notifyNewOrder({
+      memberName: `${member?.name || '不明'}(${proxyAdmin?.name || '担当者'}代理)`,
+      officeName: office?.name || '不明',
+      productName: product.name,
+      quantity, deliveryDate: delivery_date,
+      note: note || '', totalPrice: total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
+  res.json(order);
+});
+
+// 代理キャンセル
+router.delete('/office-admin/:id', officeAdminMiddleware, async (req, res) => {
+  const { data: existing } = await supabase.from('orders')
+    .select('*').eq('id', req.params.id).single();
+  if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
+  if (existing.office_id !== req.user.office_id) {
+    return res.status(403).json({ error: '他の事業所の注文は操作できません' });
+  }
+  if (existing.is_delivered) return res.status(400).json({ error: '配達済みの注文はキャンセルできません' });
+
+  const check = await checkDeadline(existing.delivery_date, req.user.office_id);
+  if (!check.allowed) return res.status(400).json({ error: '締切を過ぎているためキャンセルできません' });
+
+  // 監査ログとして「誰がキャンセルしたか」を残す
+  await supabase.from('orders')
+    .update({ proxied_by_member_id: req.user.id })
+    .eq('id', req.params.id);
+
+  await supabase.from('order_options').delete().eq('order_id', req.params.id);
+  const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// 自社の月次集計（請求書印刷用）
+router.get('/office-admin/billing', officeAdminMiddleware, async (req, res) => {
+  const { year, month } = req.query;
+  if (!year || !month) return res.status(400).json({ error: '年月を指定してください' });
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const to   = `${year}-${String(month).padStart(2, '0')}-31`;
+  const { data, error } = await supabase.from('orders')
+    .select('total_price, delivery_date, members(name, department), offices(name), order_options(name, price), products(name)')
+    .eq('office_id', req.user.office_id)
+    .gte('delivery_date', from).lte('delivery_date', to);
+  if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 

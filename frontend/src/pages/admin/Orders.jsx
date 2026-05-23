@@ -44,7 +44,14 @@ export default function AdminOrders() {
               <tr key={o.id} style={{ borderTop: '1px solid #f0efe8' }}>
                 <td style={{ padding: '10px 12px' }}>{o.offices?.name}</td>
                 <td style={{ padding: '10px 12px' }}>{o.members?.department}</td>
-                <td style={{ padding: '10px 12px', fontWeight: 500 }}>{o.members?.name}</td>
+                <td style={{ padding: '10px 12px', fontWeight: 500 }}>
+                  {o.members?.name}
+                  {o.proxied_by_member_id && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: '#854F0B', background: '#FFF3E0', padding: '2px 6px', borderRadius: 4 }}>
+                      代理
+                    </span>
+                  )}
+                </td>
                 <td style={{ padding: '10px 12px' }}>{o.products?.name}</td>
                 <td style={{ padding: '10px 12px', color: '#888' }}>{o.order_options?.map(x=>x.name).join('・')||'—'}</td>
                 <td style={{ padding: '10px 12px', color: '#854F0B', fontSize: 12, maxWidth: 180 }}>{o.note || '—'}</td>

@@ -98,7 +98,14 @@ export default function HistoryPage() {
           <div key={o.id} className="card">
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: editing === o.id ? 14 : 0 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{o.products?.name}</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>
+                  {o.products?.name}
+                  {o.proxied_by_member_id && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: '#854F0B', background: '#FFF3E0', padding: '2px 6px', borderRadius: 4, fontWeight: 500 }}>
+                      担当者代理
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
                   {o.delivery_date} × {o.quantity}個
                   {o.order_options?.length > 0 && `　${o.order_options.map(x => x.name).join('・')}`}

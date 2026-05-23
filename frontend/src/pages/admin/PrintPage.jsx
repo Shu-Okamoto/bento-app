@@ -90,7 +90,12 @@ export default function PrintPage() {
                             <div style={{ width: 16, height: 16, border: '1.5px solid #999', borderRadius: 3, display: 'inline-block' }} />
                           </td>
                           <td style={{ padding: '8px 10px' }}>{o.members?.department}</td>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>{o.members?.name}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>
+                            {o.members?.name}
+                            {o.proxied_by_member_id && (
+                              <span style={{ marginLeft: 4, fontSize: 10, color: '#854F0B' }}>(代理)</span>
+                            )}
+                          </td>
                           <td style={{ padding: '8px 10px' }}>{o.products?.name}</td>
                           <td style={{ padding: '8px 10px', color: '#777' }}>{o.order_options?.map(x=>x.name).join('・')||'—'}</td>
                           <td style={{ padding: '8px 10px', color: '#854F0B', fontSize: 11, maxWidth: 140 }}>{o.note || '—'}</td>

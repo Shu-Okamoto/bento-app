@@ -13,8 +13,13 @@ import AdminLoginPage    from './pages/AdminLoginPage';
 import OrderPage         from './pages/OrderPage';
 import HistoryPage       from './pages/HistoryPage';
 import ProfilePage       from './pages/ProfilePage';
-import MemberLayout      from './components/MemberLayout';
-import AdminLayout       from './components/AdminLayout';
+import MemberLayout       from './components/MemberLayout';
+import AdminLayout        from './components/AdminLayout';
+import OfficeAdminLayout  from './components/OfficeAdminLayout';
+import OfficeAdminOrders     from './pages/office-admin/Orders';
+import OfficeAdminMembers    from './pages/office-admin/Members';
+import OfficeAdminProxyOrder from './pages/office-admin/ProxyOrder';
+import OfficeAdminBilling    from './pages/office-admin/BillingPrint';
 
 import {
   Dashboard as AdminDashboard,
@@ -46,6 +51,18 @@ function AdminRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user || user.role !== 'admin') return <Navigate to="/admin/login" replace />;
+  return children;
+}
+
+// 事業所担当者ルートのガード
+function OfficeAdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  const { slug } = useParams();
+  if (loading) return null;
+  if (!user || user.role !== 'member' || !user.is_office_admin) {
+    if (slug) return <Navigate to={`/o/${slug}/login`} replace />;
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
@@ -183,6 +200,13 @@ export default function App() {
                   <Route path="home"    element={<OrderPage />} />
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
+                </Route>
+                {/* 事業所担当者向け管理画面 */}
+                <Route path="manage" element={<OfficeAdminRoute><OfficeAdminLayout /></OfficeAdminRoute>}>
+                  <Route index           element={<OfficeAdminOrders />} />
+                  <Route path="members"  element={<OfficeAdminMembers />} />
+                  <Route path="proxy"    element={<OfficeAdminProxyOrder />} />
+                  <Route path="billing"  element={<OfficeAdminBilling />} />
                 </Route>
                 <Route index element={<SlugHomeRedirect />} />
               </Route>

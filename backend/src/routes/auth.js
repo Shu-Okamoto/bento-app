@@ -98,11 +98,11 @@ router.post('/login', async (req, res) => {
   if (!ok) return res.status(401).json({ error: '電話番号またはパスワードが違います' });
 
   const token = jwt.sign(
-    { id: data.id, role: 'member', office_id: office.id, member_type: 'office' },
+    { id: data.id, role: 'member', office_id: office.id, member_type: 'office', is_office_admin: !!data.is_office_admin },
     process.env.JWT_SECRET,
     { expiresIn: '30d' }
   );
-  res.json({ token, user: { id: data.id, name: data.name, department: data.department, role: 'member', member_type: 'office' } });
+  res.json({ token, user: { id: data.id, name: data.name, department: data.department, role: 'member', member_type: 'office', is_office_admin: !!data.is_office_admin } });
 });
 
 // フリー会員ログイン（/login/free）
