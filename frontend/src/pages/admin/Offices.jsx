@@ -19,7 +19,7 @@ export default function Offices() {
   const getEmptyForm = () => ({
     name: '', slug: '', short_name: '', address: '', phone: '',
     contact_name: '', email: '', billing_type: 'monthly',
-    deadline_type: 'prev_day', deadline_hour: 15,
+    deadline_type: 'prev_day', deadline_hour: 15, deadline_minute: 0,
     show_free_products: false,
     cart_enabled: false,
   });
@@ -42,6 +42,7 @@ export default function Offices() {
       billing_type: o.billing_type || 'monthly',
       deadline_type: o.deadline_type || 'prev_day',
       deadline_hour: o.deadline_hour ?? 15,
+      deadline_minute: o.deadline_minute ?? 0,
       show_free_products: o.show_free_products || false,
       cart_enabled: o.cart_enabled || false,
     });
@@ -76,9 +77,12 @@ export default function Offices() {
   function getDeadlineLabel(o) {
     const type = o.deadline_type || 'prev_day';
     const hour = o.deadline_hour ?? 15;
+    const minute = o.deadline_minute ?? 0;
+    const pad = (n) => String(n).padStart(2, '0');
+    const time = `${hour}:${pad(minute)}`;
     if (type === 'none') return '締切なし';
-    if (type === 'same_day') return `当日${hour}:00まで`;
-    return `前営業日${hour}:00まで`;
+    if (type === 'same_day') return `当日${time}まで`;
+    return `前営業日${time}まで`;
   }
 
   return (
@@ -134,6 +138,15 @@ export default function Offices() {
                 <input type="number" value={form.deadline_hour} onChange={set('deadline_hour')}
                   min={0} max={23} style={{ width:70, padding:'6px 10px', border:'1px solid #e0dfd8', borderRadius:8, fontSize:14 }} />
                 <span style={{ fontSize:13, color:'#666' }}>時</span>
+                <select value={form.deadline_minute}
+                  onChange={e => setForm(f => ({ ...f, deadline_minute: Number(e.target.value) }))}
+                  style={{ padding:'6px 10px', border:'1px solid #e0dfd8', borderRadius:8, fontSize:14, background:'white' }}>
+                  <option value={0}>00</option>
+                  <option value={15}>15</option>
+                  <option value={30}>30</option>
+                  <option value={45}>45</option>
+                </select>
+                <span style={{ fontSize:13, color:'#666' }}>分</span>
               </div>
             )}
           </div>

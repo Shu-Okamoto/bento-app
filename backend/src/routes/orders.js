@@ -57,13 +57,15 @@ async function checkDeadline(delivery_date, office_id) {
   // 事業所の締切設定を取得
   let deadlineType = 'prev_day';
   let deadlineHour = 15;
+  let deadlineMinute = 0;
 
   if (office_id) {
     const { data: office } = await supabase
-      .from('offices').select('deadline_type, deadline_hour').eq('id', office_id).single();
+      .from('offices').select('deadline_type, deadline_hour, deadline_minute').eq('id', office_id).single();
     if (office) {
       deadlineType = office.deadline_type || 'prev_day';
       deadlineHour = office.deadline_hour ?? 15;
+      deadlineMinute = office.deadline_minute ?? 0;
     }
   }
 
@@ -77,24 +79,28 @@ async function checkDeadline(delivery_date, office_id) {
   let deadline;
 
   if (deadlineType === 'same_day') {
-    // 当日のdeadlineHour時（JST → UTC）
-    deadline = new Date(Date.UTC(dy, dm - 1, dd, deadlineHour - 9, 0, 0));
+    // 当日のdeadlineHour時deadlineMinute分（JST → UTC）
+    deadline = new Date(Date.UTC(dy, dm - 1, dd, deadlineHour - 9, deadlineMinute, 0));
   } else {
-    // prev_day または prev_day_custom → 前営業日のdeadlineHour時
-    // prev_day のデフォルトはhour=15
+    // prev_day または prev_day_custom → 前営業日のdeadlineHour時deadlineMinute分
+    // prev_day のデフォルトはhour=15, minute=0
     const hour = (deadlineType === 'prev_day') ? 15 : deadlineHour;
+    const minute = (deadlineType === 'prev_day') ? 0 : deadlineMinute;
     const prevDay = getPrevBizDay(delivery_date, settings);
     const [py, pm, pd] = prevDay.split('-').map(Number);
-    deadline = new Date(Date.UTC(py, pm - 1, pd, hour - 9, 0, 0));
+    deadline = new Date(Date.UTC(py, pm - 1, pd, hour - 9, minute, 0));
     deadlineHour = hour;
+    deadlineMinute = minute;
     const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
     console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}`);
   }
 
+  const pad = (n) => String(n).padStart(2, '0');
+  const timeLabel = `${deadlineHour}:${pad(deadlineMinute)}`;
   if (now > deadline) {
     const label = deadlineType === 'same_day'
-      ? `当日${deadlineHour}:00`
-      : `前営業日${deadlineHour}:00`;
+      ? `当日${timeLabel}`
+      : `前営業日${timeLabel}`;
     return { allowed: false, reason: `締切を過ぎています（${label}まで）` };
   }
 
@@ -102,8 +108,8 @@ async function checkDeadline(delivery_date, office_id) {
     allowed: true,
     deadline: deadline.toISOString(),
     deadlineLabel: deadlineType === 'same_day'
-      ? `当日${deadlineHour}:00まで`
-      : `前営業日${deadlineHour}:00まで`
+      ? `当日${timeLabel}まで`
+      : `前営業日${timeLabel}まで`
   };
 }
 

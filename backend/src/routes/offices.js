@@ -16,7 +16,7 @@ router.get('/', adminMiddleware, async (_req, res) => {
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
     .from('offices')
-    .select('id, name, slug, short_name, cart_enabled, deadline_type, deadline_hour, show_free_products')
+    .select('id, name, slug, short_name, cart_enabled, deadline_type, deadline_hour, deadline_minute, show_free_products')
     .eq('id', req.params.id)
     .single();
   if (error) return res.status(404).json({ error: '事業所が見つかりません' });
@@ -38,7 +38,7 @@ router.get('/slug/:slug', async (req, res) => {
 router.post('/', adminMiddleware, async (req, res) => {
   const {
     name, slug, short_name, address, phone, contact_name, email,
-    billing_type, deadline_type, deadline_hour,
+    billing_type, deadline_type, deadline_hour, deadline_minute,
     show_free_products, cart_enabled,
   } = req.body;
   if (!name || !slug) return res.status(400).json({ error: '事業所名とスラグは必須です' });
@@ -54,6 +54,7 @@ router.post('/', adminMiddleware, async (req, res) => {
       billing_type: billing_type || 'monthly',
       deadline_type: deadline_type || 'prev_day',
       deadline_hour: deadline_hour ?? 15,
+      deadline_minute: deadline_minute ?? 0,
       show_free_products: show_free_products || false,
       cart_enabled: cart_enabled || false,
     })
@@ -67,7 +68,7 @@ router.post('/', adminMiddleware, async (req, res) => {
 router.put('/:id', adminMiddleware, async (req, res) => {
   const {
     name, slug, short_name, address, phone, contact_name, email,
-    billing_type, deadline_type, deadline_hour,
+    billing_type, deadline_type, deadline_hour, deadline_minute,
     show_free_products, cart_enabled,
   } = req.body;
   const { data, error } = await supabase
@@ -82,6 +83,7 @@ router.put('/:id', adminMiddleware, async (req, res) => {
       billing_type: billing_type || 'monthly',
       deadline_type: deadline_type || 'prev_day',
       deadline_hour: deadline_hour ?? 15,
+      deadline_minute: deadline_minute ?? 0,
       show_free_products: show_free_products || false,
       cart_enabled: cart_enabled || false,
     })
