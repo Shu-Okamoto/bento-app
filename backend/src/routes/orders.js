@@ -235,6 +235,43 @@ router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
   res.json(data);
 });
 
+// 注文編集（管理者・締切無視）
+router.put('/admin/:id', adminMiddleware, async (req, res) => {
+  const { product_id, quantity, delivery_date, options, note } = req.body;
+  const { data: existing } = await supabase.from('orders')
+    .select('*').eq('id', req.params.id).single();
+  if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
+
+  const { data: product } = await supabase.from('products').select('price').eq('id', product_id).single();
+  if (!product) return res.status(404).json({ error: '商品が見つかりません' });
+
+  const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
+  const total_price = (product.price + optTotal) * quantity;
+
+  const { data, error } = await supabase.from('orders')
+    .update({ product_id, quantity, delivery_date, total_price, note: note || null })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  await supabase.from('order_options').delete().eq('order_id', req.params.id);
+  if (options && options.length > 0) {
+    await supabase.from('order_options').insert(options.map(o => ({ order_id: req.params.id, name: o.name, price: o.price })));
+  }
+  res.json(data);
+});
+
+// 注文削除（管理者・締切無視）
+router.delete('/admin/:id', adminMiddleware, async (req, res) => {
+  const { data: existing } = await supabase.from('orders')
+    .select('id').eq('id', req.params.id).single();
+  if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
+
+  await supabase.from('order_options').delete().eq('order_id', req.params.id);
+  const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // =============================================
 // 事業所担当者向けエンドポイント（自社office_idでスコープ固定）
 // office_id はJWTから取得する（リクエストパラメータからは受けない）
