@@ -6,15 +6,19 @@ export function Members() {
   const [members, setMembers] = useState([]);
   const [offices, setOffices] = useState([]);
   const [officeId, setOfficeId] = useState('');
+  const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name:'', department:'', phone:'', address:'' });
 
   function reload() {
-    const q = officeId ? `?office_id=${officeId}` : '';
+    const params = new URLSearchParams();
+    if (officeId) params.set('office_id', officeId);
+    if (includeWithdrawn) params.set('include_withdrawn', '1');
+    const q = params.toString() ? `?${params}` : '';
     api.get(`/members${q}`).then(setMembers);
   }
   useEffect(() => { api.get('/offices').then(setOffices); }, []);
-  useEffect(() => { reload(); }, [officeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { reload(); }, [officeId, includeWithdrawn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function toggleOfficeAdmin(m) {
     const next = !m.is_office_admin;
@@ -48,6 +52,26 @@ export function Members() {
     }
   }
 
+  async function withdraw(m) {
+    if (!confirm(`${m.name} さんを退会処理しますか？\n\nアカウントは無効化されますが、注文履歴は記録として残ります。後から復元することもできます。`)) return;
+    try {
+      await api.patch(`/members/${m.id}/withdraw`);
+      setMembers(prev => prev.map(x => x.id === m.id ? { ...x, withdrawn_at: new Date().toISOString() } : x));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function restore(m) {
+    if (!confirm(`${m.name} さんを復元しますか？`)) return;
+    try {
+      await api.patch(`/members/${m.id}/restore`);
+      setMembers(prev => prev.map(x => x.id === m.id ? { ...x, withdrawn_at: null } : x));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   async function del(m) {
     if (!confirm(`${m.name} さんを完全に削除しますか？\n\n会員情報と関連する全ての注文履歴が削除されます。この操作は取り消せません。`)) return;
     try {
@@ -60,12 +84,23 @@ export function Members() {
 
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
         <h1 style={{ fontSize:20, fontWeight:700 }}>会員管理</h1>
-        <select value={officeId} onChange={e => setOfficeId(e.target.value)} className="btn btn-secondary" style={{ padding:'8px 12px' }}>
-          <option value="">すべての事業所</option>
-          {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-        </select>
+        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, cursor:'pointer' }}>
+            <input
+              type="checkbox"
+              checked={includeWithdrawn}
+              onChange={e => setIncludeWithdrawn(e.target.checked)}
+              style={{ accentColor:'#1D9E75' }}
+            />
+            退会済みも表示
+          </label>
+          <select value={officeId} onChange={e => setOfficeId(e.target.value)} className="btn btn-secondary" style={{ padding:'8px 12px' }}>
+            <option value="">すべての事業所</option>
+            {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {editing && (
@@ -107,11 +142,14 @@ export function Members() {
           </thead>
           <tbody>
             {members.map(m => (
-              <tr key={m.id} style={{ borderTop:'1px solid #f0efe8' }}>
+              <tr key={m.id} style={{ borderTop:'1px solid #f0efe8', opacity: m.withdrawn_at ? 0.6 : 1 }}>
                 <td style={{ padding:'10px 12px', fontWeight:500 }}>
                   {m.name}
-                  {m.is_office_admin && (
+                  {m.is_office_admin && !m.withdrawn_at && (
                     <span className="badge badge-green" style={{ marginLeft:6 }}>担当者</span>
+                  )}
+                  {m.withdrawn_at && (
+                    <span className="badge badge-amber" style={{ marginLeft:6 }}>退会済み</span>
                   )}
                 </td>
                 <td style={{ padding:'10px 12px' }}>{m.department||'—'}</td>
@@ -120,7 +158,7 @@ export function Members() {
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.address||'—'}</td>
                 <td style={{ padding:'10px 12px', color:'#888' }}>{m.created_at?.split('T')[0]}</td>
                 <td style={{ padding:'10px 12px' }}>
-                  {m.member_type === 'free' ? (
+                  {m.member_type === 'free' || m.withdrawn_at ? (
                     <span style={{ color:'#aaa', fontSize:12 }}>—</span>
                   ) : (
                     <button
@@ -132,9 +170,16 @@ export function Members() {
                   )}
                 </td>
                 <td style={{ padding:'10px 12px', whiteSpace:'nowrap' }}>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => startEdit(m)}>編集</button>
-                    <button className="btn btn-danger" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => del(m)}>削除</button>
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    {m.withdrawn_at ? (
+                      <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => restore(m)}>復元</button>
+                    ) : (
+                      <>
+                        <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => startEdit(m)}>編集</button>
+                        <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => withdraw(m)}>退会処理</button>
+                      </>
+                    )}
+                    <button className="btn btn-danger" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => del(m)}>完全削除</button>
                   </div>
                 </td>
               </tr>
