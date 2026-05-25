@@ -91,7 +91,7 @@ router.post('/login', async (req, res) => {
   if (!office) return res.status(404).json({ error: '事業所が見つかりません' });
 
   const { data } = await supabase.from('members').select('*')
-    .eq('office_id', office.id).eq('phone', phone).eq('member_type', 'office').single();
+    .eq('office_id', office.id).eq('phone', phone).eq('member_type', 'office').is('withdrawn_at', null).single();
   if (!data) return res.status(401).json({ error: '電話番号またはパスワードが違います' });
 
   const ok = await bcrypt.compare(password, data.password_hash);
@@ -111,7 +111,7 @@ router.post('/login/free', async (req, res) => {
   if (!phone || !password) return res.status(400).json({ error: '必須項目が不足しています' });
 
   const { data } = await supabase.from('members').select('*')
-    .eq('phone', phone).eq('member_type', 'free').single();
+    .eq('phone', phone).eq('member_type', 'free').is('withdrawn_at', null).single();
   if (!data) return res.status(401).json({ error: '電話番号またはパスワードが違います' });
 
   const ok = await bcrypt.compare(password, data.password_hash);
