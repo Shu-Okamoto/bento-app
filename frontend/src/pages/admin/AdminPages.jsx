@@ -6,6 +6,9 @@ export function Members() {
   const [members, setMembers] = useState([]);
   const [offices, setOffices] = useState([]);
   const [officeId, setOfficeId] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name:'', department:'', phone:'', address:'' });
+
   function reload() {
     const q = officeId ? `?office_id=${officeId}` : '';
     api.get(`/members${q}`).then(setMembers);
@@ -25,6 +28,36 @@ export function Members() {
     }
   }
 
+  function startEdit(m) {
+    setEditing(m.id);
+    setForm({
+      name: m.name || '',
+      department: m.department || '',
+      phone: m.phone || '',
+      address: m.address || '',
+    });
+  }
+
+  async function saveEdit() {
+    try {
+      await api.put(`/members/${editing}`, form);
+      setMembers(prev => prev.map(x => x.id === editing ? { ...x, ...form } : x));
+      setEditing(null);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function del(m) {
+    if (!confirm(`${m.name} さんを完全に削除しますか？\n\n会員情報と関連する全ての注文履歴が削除されます。この操作は取り消せません。`)) return;
+    try {
+      await api.delete(`/members/${m.id}`);
+      setMembers(prev => prev.filter(x => x.id !== m.id));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
@@ -34,11 +67,40 @@ export function Members() {
           {offices.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
       </div>
+
+      {editing && (
+        <div className="card" style={{ marginBottom:16 }}>
+          <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>会員を編集</h2>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label>氏名 *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label>所属</label>
+              <input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label>電話番号</label>
+              <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label>住所</label>
+              <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn btn-primary" onClick={saveEdit}>保存</button>
+            <button className="btn btn-secondary" onClick={() => setEditing(null)}>キャンセル</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ background:'white', border:'1px solid #e0dfd8', borderRadius:12, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
             <tr style={{ background:'#f5f4f0' }}>
-              {['氏名','所属','事業所','電話番号','住所','登録日','担当者'].map(h => (
+              {['氏名','所属','事業所','電話番号','住所','登録日','担当者','操作'].map(h => (
                 <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontWeight:600, color:'#555', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -68,6 +130,12 @@ export function Members() {
                       {m.is_office_admin ? '解除' : '任命'}
                     </button>
                   )}
+                </td>
+                <td style={{ padding:'10px 12px', whiteSpace:'nowrap' }}>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => startEdit(m)}>編集</button>
+                    <button className="btn btn-danger" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => del(m)}>削除</button>
+                  </div>
                 </td>
               </tr>
             ))}

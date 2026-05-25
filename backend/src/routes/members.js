@@ -27,6 +27,35 @@ router.get('/', adminMiddleware, async (req, res) => {
   res.json(data);
 });
 
+// 会員編集（システム管理者）
+router.put('/:id', adminMiddleware, async (req, res) => {
+  const { name, department, phone, address } = req.body;
+  const update = {};
+  if (name !== undefined) update.name = name;
+  if (department !== undefined) update.department = department;
+  if (phone !== undefined) update.phone = phone;
+  if (address !== undefined) update.address = address;
+  const { data, error } = await supabase.from('members')
+    .update(update).eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: '会員が見つかりません' });
+  res.json(data);
+});
+
+// 会員削除（システム管理者・完全削除）
+router.delete('/:id', adminMiddleware, async (req, res) => {
+  // 関連注文の order_options も含めて削除
+  const { data: orders } = await supabase.from('orders').select('id').eq('member_id', req.params.id);
+  if (orders && orders.length > 0) {
+    const orderIds = orders.map(o => o.id);
+    await supabase.from('order_options').delete().in('order_id', orderIds);
+    await supabase.from('orders').delete().eq('member_id', req.params.id);
+  }
+  const { error } = await supabase.from('members').delete().eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // 事業所担当者フラグ切替（システム管理者のみ）
 router.patch('/:id/office-admin', adminMiddleware, async (req, res) => {
   const { is_office_admin } = req.body;
