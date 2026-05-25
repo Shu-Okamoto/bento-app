@@ -128,7 +128,20 @@ router.get('/my', authMiddleware, async (req, res) => {
     .eq('member_id', req.user.id)
     .order('delivery_date', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // 配達日ごとに締切判定（同じ日付の重複呼び出しを避ける）
+  const pendingDates = [...new Set(data.filter(o => !o.is_delivered).map(o => o.delivery_date))];
+  const deadlineMap = {};
+  for (const d of pendingDates) {
+    const check = await checkDeadline(d, req.user.office_id);
+    deadlineMap[d] = !!check.allowed;
+  }
+
+  const enriched = data.map(o => ({
+    ...o,
+    cancellable: !o.is_delivered && (deadlineMap[o.delivery_date] || false),
+  }));
+  res.json(enriched);
 });
 
 // 注文作成

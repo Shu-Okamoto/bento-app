@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { parseDate } from '../utils/date';
 
 export default function HistoryPage() {
   const { user } = useAuth();
@@ -21,10 +20,8 @@ export default function HistoryPage() {
   }, []);
 
   function canEdit(order) {
-    if (order.is_delivered) return false;
-    const delivery = parseDate(order.delivery_date);
-    const today = parseDate(new Date().toISOString().split('T')[0]);
-    return delivery >= today;
+    // バックエンドが返す cancellable フラグ（締切判定済み）を使用
+    return !!order.cancellable;
   }
 
   function startEdit(order) {
