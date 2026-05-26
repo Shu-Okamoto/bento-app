@@ -75,6 +75,9 @@ export default function LoginPage() {
         <p style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: '#666' }}>
           初めての方は <a href={`/o/${slug}/register`} style={{ color: '#1D9E75' }}>会員登録</a>
         </p>
+        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: '#888', lineHeight: 1.6 }}>
+          パスワードを忘れた方は、<br />事業所のご担当者に再発行をご依頼ください。
+        </p>
       </div>
     </div>
   );
