@@ -34,6 +34,7 @@ export default function OfficeAdminLayout() {
     { to: base,                label: '注文一覧',     icon: '🍱', end: true },
     { to: `${base}/members`,   label: '会員一覧',     icon: '👥' },
     { to: `${base}/proxy`,     label: '代理注文',     icon: '✍️' },
+    { to: `${base}/print`,     label: '注文票印刷',   icon: '🖨️' },
     { to: `${base}/billing`,   label: '請求書印刷',   icon: '🧾' },
     { to: `/o/${slug}/home`,   label: '注文画面へ戻る', icon: '↩️' },
   ];
