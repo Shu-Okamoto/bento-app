@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '../../utils/api';
 
 export default function OfficeAdminOrders() {
+  const { slug } = useParams();
   const [orders, setOrders] = useState([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,7 @@ export default function OfficeAdminOrders() {
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
           className="btn btn-secondary" style={{ padding: '8px 12px' }} />
         <span style={{ color: '#888', fontSize: 13 }}>{orders.length} 件</span>
+        <a href={`/o/${slug}/manage/print`} className="btn btn-secondary" style={{ marginLeft: 'auto' }}>🖨️ 印刷画面へ</a>
       </div>
 
       <div style={{ background: 'white', border: '1px solid #e0dfd8', borderRadius: 12, overflow: 'auto' }}>

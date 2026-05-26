@@ -20,6 +20,7 @@ import OfficeAdminOrders     from './pages/office-admin/Orders';
 import OfficeAdminMembers    from './pages/office-admin/Members';
 import OfficeAdminProxyOrder from './pages/office-admin/ProxyOrder';
 import OfficeAdminBilling    from './pages/office-admin/BillingPrint';
+import OfficeAdminPrint      from './pages/office-admin/PrintPage';
 
 import {
   Dashboard as AdminDashboard,
@@ -206,6 +207,7 @@ export default function App() {
                   <Route index           element={<OfficeAdminOrders />} />
                   <Route path="members"  element={<OfficeAdminMembers />} />
                   <Route path="proxy"    element={<OfficeAdminProxyOrder />} />
+                  <Route path="print"    element={<OfficeAdminPrint />} />
                   <Route path="billing"  element={<OfficeAdminBilling />} />
                 </Route>
                 <Route index element={<SlugHomeRedirect />} />
