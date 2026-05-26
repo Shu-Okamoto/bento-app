@@ -10,8 +10,11 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', department: '', phone: '', address: '' });
   const [withdrawing, setWithdrawing] = useState(false);
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  const [changingPw, setChangingPw] = useState(false);
   useEffect(() => { api.get('/members/me').then(setForm); }, []);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const setPwField = k => e => setPw(p => ({ ...p, [k]: e.target.value }));
 
   async function save(e) {
     e.preventDefault();
@@ -19,6 +22,26 @@ export default function ProfilePage() {
       await api.put('/members/me', form);
       showToast('保存しました', 'success');
     } catch (err) { showToast(err.message, 'error'); }
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    if (pw.next.length < 6) {
+      showToast('新しいパスワードは6文字以上にしてください', 'warn');
+      return;
+    }
+    if (pw.next !== pw.confirm) {
+      showToast('新しいパスワード（確認）が一致しません', 'warn');
+      return;
+    }
+    setChangingPw(true);
+    try {
+      await api.put('/members/me/password', { current_password: pw.current, new_password: pw.next });
+      showToast('パスワードを変更しました', 'success');
+      setPw({ current: '', next: '', confirm: '' });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally { setChangingPw(false); }
   }
 
   async function withdraw() {
@@ -45,6 +68,18 @@ export default function ProfilePage() {
           <div className="form-group"><label>電話番号</label><input value={form.phone} onChange={set('phone')} type="text" inputMode="tel" /></div>
           <div className="form-group"><label>住所・お届け先</label><input value={form.address} onChange={set('address')} /></div>
           <button className="btn btn-primary" style={{ width: '100%' }}>保存する</button>
+        </form>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>パスワード変更</div>
+        <form onSubmit={changePassword}>
+          <div className="form-group"><label>現在のパスワード</label><input type="password" value={pw.current} onChange={setPwField('current')} required autoComplete="current-password" /></div>
+          <div className="form-group"><label>新しいパスワード（6文字以上）</label><input type="password" value={pw.next} onChange={setPwField('next')} required minLength={6} autoComplete="new-password" /></div>
+          <div className="form-group"><label>新しいパスワード（確認）</label><input type="password" value={pw.confirm} onChange={setPwField('confirm')} required minLength={6} autoComplete="new-password" /></div>
+          <button className="btn btn-primary" style={{ width: '100%' }} disabled={changingPw}>
+            {changingPw ? '変更中...' : 'パスワードを変更する'}
+          </button>
         </form>
       </div>
 

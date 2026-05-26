@@ -5,6 +5,7 @@ export default function OfficeAdminMembers() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
+  const [resetInfo, setResetInfo] = useState(null);
 
   function reload() {
     const q = includeWithdrawn ? '?include_withdrawn=1' : '';
@@ -17,6 +18,16 @@ export default function OfficeAdminMembers() {
     try {
       await api.patch(`/members/office-admin/${m.id}/withdraw`);
       setMembers(prev => prev.map(x => x.id === m.id ? { ...x, withdrawn_at: new Date().toISOString() } : x));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function resetPassword(m) {
+    if (!confirm(`${m.name} さんのパスワードをリセットしますか？\n\n仮パスワードを発行します。現在のパスワードは使えなくなります。`)) return;
+    try {
+      const r = await api.post(`/members/office-admin/${m.id}/reset-password`, {});
+      setResetInfo({ name: m.name, password: r.temp_password });
     } catch (e) {
       alert(e.message);
     }
@@ -74,9 +85,14 @@ export default function OfficeAdminMembers() {
                   {m.withdrawn_at ? (
                     <span style={{ color:'#aaa', fontSize:12 }}>—</span>
                   ) : (
-                    <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => withdraw(m)}>
-                      退会処理
-                    </button>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => resetPassword(m)}>
+                        パスワード再発行
+                      </button>
+                      <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }} onClick={() => withdraw(m)}>
+                        退会処理
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -87,6 +103,25 @@ export default function OfficeAdminMembers() {
           <p style={{ padding: 24, textAlign: 'center', color: '#999' }}>会員がまだ登録されていません</p>
         )}
       </div>
+
+      {resetInfo && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={() => setResetInfo(null)}>
+          <div style={{ background:'white', borderRadius:12, padding:24, maxWidth:420, width:'100%', boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize:16, fontWeight:700, marginBottom:10 }}>仮パスワードを発行しました</h2>
+            <p style={{ fontSize:13, color:'#666', marginBottom:14 }}>
+              <strong>{resetInfo.name}</strong> さんの新しいパスワードです。本人に伝えてください。<br />
+              <span style={{ color:'#a04040' }}>※ この画面を閉じると再表示できません。</span>
+            </p>
+            <div style={{ background:'#f5f4f0', border:'1px solid #e0dfd8', borderRadius:8, padding:'14px 16px', marginBottom:14, textAlign:'center' }}>
+              <code style={{ fontSize:22, fontWeight:700, letterSpacing:2, fontFamily:'monospace' }}>{resetInfo.password}</code>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="btn btn-secondary" style={{ flex:1 }} onClick={() => { navigator.clipboard?.writeText(resetInfo.password); }}>コピー</button>
+              <button className="btn btn-primary" style={{ flex:1 }} onClick={() => setResetInfo(null)}>閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

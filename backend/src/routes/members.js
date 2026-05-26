@@ -1,6 +1,17 @@
 const router = require('express').Router();
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const supabase = require('../utils/supabase');
 const { authMiddleware, adminMiddleware, officeAdminMiddleware } = require('../middleware/auth');
+
+// 紛らわしい文字を除いた英数字8桁の仮パスワード
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let out = '';
+  const bytes = crypto.randomBytes(8);
+  for (let i = 0; i < 8; i++) out += chars[bytes[i] % chars.length];
+  return out;
+}
 
 // 自分のプロフィール取得
 router.get('/me', authMiddleware, async (req, res) => {
@@ -15,6 +26,29 @@ router.put('/me', authMiddleware, async (req, res) => {
   const { data, error } = await supabase.from('members').update({ name, department, phone, address }).eq('id', req.user.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
+});
+
+// 自分のパスワード変更
+router.put('/me/password', authMiddleware, async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: '現在のパスワードと新しいパスワードを入力してください' });
+  }
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: '新しいパスワードは6文字以上にしてください' });
+  }
+  const { data: member } = await supabase.from('members')
+    .select('password_hash').eq('id', req.user.id).single();
+  if (!member) return res.status(404).json({ error: '会員が見つかりません' });
+
+  const ok = await bcrypt.compare(current_password, member.password_hash);
+  if (!ok) return res.status(401).json({ error: '現在のパスワードが正しくありません' });
+
+  const password_hash = await bcrypt.hash(new_password, 10);
+  const { error } = await supabase.from('members')
+    .update({ password_hash }).eq('id', req.user.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // 自分の退会（論理削除）
@@ -76,6 +110,20 @@ router.patch('/:id/withdraw', adminMiddleware, async (req, res) => {
   res.json(data);
 });
 
+// 会員のパスワードリセット（システム管理者）→ 仮パスワード返却
+router.post('/:id/reset-password', adminMiddleware, async (req, res) => {
+  const { data: target } = await supabase.from('members')
+    .select('id').eq('id', req.params.id).single();
+  if (!target) return res.status(404).json({ error: '会員が見つかりません' });
+
+  const tempPassword = generateTempPassword();
+  const password_hash = await bcrypt.hash(tempPassword, 10);
+  const { error } = await supabase.from('members')
+    .update({ password_hash }).eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true, temp_password: tempPassword });
+});
+
 // 会員復元（システム管理者）
 router.patch('/:id/restore', adminMiddleware, async (req, res) => {
   const { data, error } = await supabase.from('members')
@@ -111,6 +159,23 @@ router.get('/office-admin', officeAdminMiddleware, async (req, res) => {
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+});
+
+// 自社会員のパスワードリセット（事業所担当者）→ 仮パスワード返却
+router.post('/office-admin/:id/reset-password', officeAdminMiddleware, async (req, res) => {
+  const { data: target } = await supabase.from('members')
+    .select('id, office_id').eq('id', req.params.id).single();
+  if (!target) return res.status(404).json({ error: '会員が見つかりません' });
+  if (target.office_id !== req.user.office_id) {
+    return res.status(403).json({ error: '他の事業所の会員は操作できません' });
+  }
+
+  const tempPassword = generateTempPassword();
+  const password_hash = await bcrypt.hash(tempPassword, 10);
+  const { error } = await supabase.from('members')
+    .update({ password_hash }).eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ ok: true, temp_password: tempPassword });
 });
 
 // 自社会員の退会処理（事業所担当者・論理削除）
