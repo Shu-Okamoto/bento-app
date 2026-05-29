@@ -6,6 +6,8 @@ export default function OfficeAdminMembers() {
   const [loading, setLoading] = useState(true);
   const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
   const [resetInfo, setResetInfo] = useState(null);
+  const [editingDept, setEditingDept] = useState(null); // member id
+  const [deptDraft, setDeptDraft] = useState('');
 
   function reload() {
     const q = includeWithdrawn ? '?include_withdrawn=1' : '';
@@ -18,6 +20,21 @@ export default function OfficeAdminMembers() {
     try {
       await api.patch(`/members/office-admin/${m.id}/withdraw`);
       setMembers(prev => prev.map(x => x.id === m.id ? { ...x, withdrawn_at: new Date().toISOString() } : x));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function startEditDept(m) {
+    setEditingDept(m.id);
+    setDeptDraft(m.department || '');
+  }
+
+  async function saveDept(m) {
+    try {
+      await api.patch(`/members/office-admin/${m.id}/department`, { department: deptDraft });
+      setMembers(prev => prev.map(x => x.id === m.id ? { ...x, department: deptDraft || null } : x));
+      setEditingDept(null);
     } catch (e) {
       alert(e.message);
     }
@@ -71,7 +88,29 @@ export default function OfficeAdminMembers() {
                     <span className="badge badge-amber" style={{ marginLeft: 6 }}>退会済み</span>
                   )}
                 </td>
-                <td style={{ padding: '10px 12px' }}>{m.department || '—'}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  {editingDept === m.id ? (
+                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                      <input
+                        value={deptDraft}
+                        onChange={e => setDeptDraft(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveDept(m); if (e.key === 'Escape') setEditingDept(null); }}
+                        autoFocus
+                        style={{ padding:'4px 8px', border:'1px solid #e0dfd8', borderRadius:6, fontSize:13, width:140 }}
+                      />
+                      <button className="btn btn-primary" style={{ padding:'3px 8px', fontSize:11 }} onClick={() => saveDept(m)}>保存</button>
+                      <button className="btn btn-secondary" style={{ padding:'3px 8px', fontSize:11 }} onClick={() => setEditingDept(null)}>×</button>
+                    </div>
+                  ) : (
+                    <span
+                      style={{ cursor: m.withdrawn_at ? 'default' : 'pointer', borderBottom: m.withdrawn_at ? 'none' : '1px dashed #ccc' }}
+                      onClick={() => !m.withdrawn_at && startEditDept(m)}
+                      title={m.withdrawn_at ? '' : 'クリックして編集'}
+                    >
+                      {m.department || '—'}
+                    </span>
+                  )}
+                </td>
                 <td style={{ padding: '10px 12px' }}>{m.phone || '—'}</td>
                 <td style={{ padding: '10px 12px', color: '#888' }}>
                   {m.created_at ? new Date(m.created_at).toLocaleDateString('ja-JP') : '—'}

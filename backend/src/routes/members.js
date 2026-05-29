@@ -194,4 +194,20 @@ router.patch('/office-admin/:id/withdraw', officeAdminMiddleware, async (req, re
   res.json(data);
 });
 
+// 自社会員の所属（部署）編集（事業所担当者）
+router.patch('/office-admin/:id/department', officeAdminMiddleware, async (req, res) => {
+  const { department } = req.body;
+  const { data: target } = await supabase.from('members')
+    .select('id, office_id').eq('id', req.params.id).single();
+  if (!target) return res.status(404).json({ error: '会員が見つかりません' });
+  if (target.office_id !== req.user.office_id) {
+    return res.status(403).json({ error: '他の事業所の会員は操作できません' });
+  }
+  const { data, error } = await supabase.from('members')
+    .update({ department: department || null })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
 module.exports = router;
