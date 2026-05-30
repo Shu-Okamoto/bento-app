@@ -22,6 +22,7 @@ app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/holidays', require('./routes/holidays'));
 app.use('/api/line',     require('./routes/line'));
 app.use('/api/announcements', require('./routes/announcements'));
+app.use('/api/menus',    require('./routes/menus'));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
