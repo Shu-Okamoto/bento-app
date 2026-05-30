@@ -9,6 +9,16 @@ import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
+// 商品名 → hq_weekly_menus.category マッピング
+// 全角/半角カッコ両対応
+const PRODUCT_TO_CATEGORY = {
+  '幕の内弁当(肉)': 'メイン肉',
+  '幕の内弁当（肉）': 'メイン肉',
+  'デラックス弁当': 'デラックスメイン',
+  '幕の内弁当(魚)': '魚',
+  '幕の内弁当（魚）': '魚',
+};
+
 // 登録促進モーダル
 function RegisterModal({ onClose, slug }) {
   const isFree = !slug || slug === 'free';
@@ -57,6 +67,7 @@ export default function OrderPage() {
   const [deadlineInfo, setDeadlineInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [menusByCategory, setMenusByCategory] = useState({}); // { category: [menu_name, ...] }
 
   // ステップ：true = メニュー、false = 日付選択
   const [dateConfirmed, setDateConfirmed] = useState(false);
@@ -72,6 +83,21 @@ export default function OrderPage() {
 
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user && !multiDateMode) checkDeadline(date, true); }, [date, user, multiDateMode]);
+
+  // 配達日に対応するおかず情報を取得
+  useEffect(() => {
+    if (multiDateMode || !date) { setMenusByCategory({}); return; }
+    api.get(`/menus?delivery_date=${date}`)
+      .then(rows => {
+        const map = {};
+        for (const r of (rows || [])) {
+          if (!map[r.category]) map[r.category] = [];
+          if (r.menu_name) map[r.category].push(r.menu_name);
+        }
+        setMenusByCategory(map);
+      })
+      .catch(() => setMenusByCategory({}));
+  }, [date, multiDateMode]);
 
   useEffect(() => {
     if (!multiDateMode || !canUseMultiDay) return;
@@ -386,6 +412,16 @@ export default function OrderPage() {
               <div style={{ padding:'8px 12px' }}>
                 <div style={{ fontSize:14, fontWeight:600 }}>{p.name}</div>
                 <div style={{ fontSize:13, color:'#1D9E75', fontWeight:500, marginTop:2 }}>¥{p.price.toLocaleString()}〜</div>
+                {(() => {
+                  const cat = PRODUCT_TO_CATEGORY[p.name];
+                  const items = cat ? menusByCategory[cat] : null;
+                  if (!items || items.length === 0) return null;
+                  return (
+                    <div style={{ fontSize:11, color:'#854F0B', marginTop:4, lineHeight:1.4 }}>
+                      🍱 {items.join('・')}
+                    </div>
+                  );
+                })()}
                 {daysLabel && <div style={{ fontSize:11, color:'#888', marginTop:3 }}>📅 {daysLabel}</div>}
               </div>
 
