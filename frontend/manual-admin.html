@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>みかわ弁当注文アプリ 担当者向けマニュアル</title>
+<style>
+  :root{
+    --green:#1f9d6b;
+    --green-dark:#157a52;
+    --green-pale:#eaf6f0;
+    --ink:#2b2b2b;
+    --sub:#6b7670;
+    --line:#d9e2dd;
+    --accent:#a4242c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    color:var(--ink);
+    line-height:1.8;
+    background:#f4f6f5;
+    font-size:14px;
+  }
+  .page{
+    max-width:800px;
+    margin:24px auto;
+    background:#fff;
+    padding:48px 56px;
+    box-shadow:0 2px 16px rgba(0,0,0,.08);
+  }
+  .cover{
+    text-align:center;
+    padding:60px 0 48px;
+    border-bottom:3px solid var(--green);
+    margin-bottom:40px;
+  }
+  .cover .logo{font-size:13px;letter-spacing:.3em;color:var(--accent);font-weight:700;margin-bottom:6px;}
+  .cover .brand{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:.15em;margin-bottom:32px;}
+  .cover h1{font-size:30px;font-weight:700;margin:0 0 8px;color:var(--ink);letter-spacing:.05em;}
+  .cover .target{display:inline-block;background:var(--green-pale);color:var(--green-dark);font-weight:700;padding:6px 22px;border-radius:999px;font-size:14px;margin-top:18px;}
+  .cover .meta{color:var(--sub);font-size:12px;margin-top:24px;}
+
+  h2{font-size:19px;color:var(--green-dark);border-left:6px solid var(--green);padding:4px 0 4px 14px;margin:40px 0 16px;letter-spacing:.04em;}
+  h3{font-size:15px;color:var(--ink);margin:24px 0 10px;padding-bottom:6px;border-bottom:1px dashed var(--line);}
+  h4{font-size:14px;color:var(--green-dark);margin:18px 0 6px;}
+  p{margin:8px 0;}
+  ol,ul{margin:8px 0 8px 0;padding-left:1.5em;}
+  li{margin:5px 0;}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--green);color:#fff;font-weight:600;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#f7faf8;}
+  td.center,th.center{text-align:center;}
+
+  .shot-fig{margin:14px 0;text-align:center;}
+  .shot-fig img{max-width:100%;border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.10);}
+  .shot-fig figcaption{font-size:11px;color:var(--sub);margin-top:6px;}
+  .shot-fig.missing img{display:none;}
+  .shot-fig.missing::before{
+    content:"📷 画像未挿入：" attr(data-file);
+    display:block;
+    border:2px dashed var(--green);
+    background:repeating-linear-gradient(45deg,#fafdfb,#fafdfb 10px,#f0f7f3 10px,#f0f7f3 20px);
+    color:var(--green-dark);text-align:center;padding:22px 16px;border-radius:8px;font-size:13px;font-weight:600;
+  }
+
+  .note{background:#fff8e9;border:1px solid #f0dca6;border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px;}
+  .note .label{font-weight:700;color:#9a7212;display:block;margin-bottom:4px;}
+  .note ul{margin:4px 0 0;}
+
+  .callout{background:var(--green-pale);border-left:4px solid var(--green);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;color:var(--green-dark);}
+  .callout strong{color:var(--green-dark);}
+
+  .faq dt{font-weight:700;color:var(--ink);margin-top:14px;}
+  .faq dt::before{content:"Q. ";color:var(--green);font-weight:700;}
+  .faq dd{margin:4px 0 0;padding-left:1.4em;color:#444;}
+  .faq dd::before{content:"A. ";color:var(--accent);font-weight:700;margin-left:-1.4em;}
+
+  .contact{background:var(--green-pale);border-radius:10px;padding:20px 24px;margin:16px 0;}
+  .contact .name{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px;}
+  .req{color:#b03a3a;background:#fdeaea;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:600;}
+
+  .footer-note{color:var(--sub);font-size:11px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px;}
+
+  .badge{display:inline-block;background:var(--green-pale);color:var(--green-dark);border:1px solid var(--green);border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;}
+
+  .print-bar{position:sticky;top:0;z-index:10;background:var(--green-dark);color:#fff;text-align:center;padding:10px;font-size:13px;}
+  .print-bar button{background:#fff;color:var(--green-dark);border:none;padding:7px 18px;border-radius:6px;font-weight:700;cursor:pointer;margin-left:10px;font-family:inherit;}
+  .print-bar button:hover{background:#eafff5;}
+
+  @media print{
+    body{background:#fff;font-size:11pt;}
+    .page{box-shadow:none;margin:0;max-width:none;padding:0 12mm;}
+    .print-bar{display:none;}
+    h2,h3,h4{page-break-after:avoid;}
+    table,.shot-fig,.note,.callout{page-break-inside:avoid;}
+    .cover{page-break-after:always;}
+    .section{page-break-inside:avoid;}
+  }
+  @page{margin:14mm;}
+</style>
+</head>
+<body>
+
+<div class="print-bar">
+  印刷・PDF保存はこちら →
+  <button onclick="window.print()">🖨 印刷する</button>
+</div>
+
+<div class="page">
+
+  <div class="cover">
+    <div class="logo">里の味</div>
+    <div class="brand">み か わ</div>
+    <h1>みかわ弁当注文アプリ<br>担当者向けマニュアル</h1>
+    <div class="target">事業所のご担当者さま向け</div>
+    <div class="meta">発行日：2026年5月　／　第1.0版</div>
+  </div>
+
+  <div class="section">
+    <h2>はじめに</h2>
+    <p>このマニュアルは、事業所のご担当者さま向けに、<strong>事業所管理機能</strong>および<strong>注文票・請求書の印刷</strong>の利用方法をご案内するものです。</p>
+    <p>担当者には以下の権限が付与されます。</p>
+    <ul>
+      <li>自社の会員一覧の閲覧／退会処理／パスワード再発行</li>
+      <li>会員に代わって注文を入れる（<strong>代理注文</strong>）</li>
+      <li>自社の全注文の閲覧／キャンセル</li>
+      <li><strong>注文票</strong>の印刷（配達日ごと・所属別）</li>
+      <li><strong>請求書（月次集計）</strong>の印刷</li>
+    </ul>
+    <div class="callout">基本操作（ログイン、弁当の注文方法など）については、<strong>「会員向け利用マニュアル」</strong>をご参照ください。</div>
+  </div>
+
+  <div class="section">
+    <h2>1. 担当者権限について</h2>
+    <h3>担当者とは</h3>
+    <p>事業所内で、会員管理や注文取りまとめを行う役割の方です。担当者として登録された会員には、会員一覧に <span class="badge">担当者</span> バッジが表示されます。</p>
+    <figure class="shot-fig missing" data-file="public/adm01_members_badge.png">
+      <img src="public/adm01_members_badge.png" alt="会員一覧画面（担当者バッジ）" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>会員一覧画面（担当者バッジを赤枠で示す）</figcaption>
+    </figure>
+    <h3>担当者になるには</h3>
+    <p>担当者権限の付与は、里の味みかわにて行います。ご希望の場合はお問い合わせください。</p>
+  </div>
+
+  <div class="section">
+    <h2>2. 事業所管理画面へのアクセス</h2>
+    <p>担当者としてログインすると、画面右上に <strong>「事業所管理」</strong> リンクが表示されます。</p>
+    <figure class="shot-fig missing" data-file="public/adm02_header_link.png">
+      <img src="public/adm02_header_link.png" alt="トップ画面の事業所管理リンク" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>トップ画面（ヘッダーの「事業所管理」を赤枠で示す）</figcaption>
+    </figure>
+    <p>このリンクをクリックすると、事業所管理画面に切り替わります。</p>
+    <h3>メニュー構成</h3>
+    <p>事業所管理画面では、左側のメニューから各機能にアクセスします。</p>
+    <table>
+      <thead><tr><th>メニュー</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>注文一覧</td><td>自社の全注文の確認・キャンセル</td></tr>
+        <tr><td>会員一覧</td><td>会員の確認・退会処理・パスワード再発行</td></tr>
+        <tr><td>代理注文</td><td>会員に代わって注文を入力</td></tr>
+        <tr><td>注文票印刷</td><td>配達日ごとの注文票を印刷（配達・受け渡し用）</td></tr>
+        <tr><td>請求書印刷</td><td>月ごとの集計（請求書）を印刷</td></tr>
+        <tr><td>注文画面へ戻る</td><td>通常の注文画面に戻る</td></tr>
+      </tbody>
+    </table>
+    <figure class="shot-fig missing" data-file="public/adm03_sidebar.png">
+      <img src="public/adm03_sidebar.png" alt="事業所管理画面の左メニュー" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>事業所管理画面（左メニュー全体）</figcaption>
+    </figure>
+    <div class="note">
+      <span class="label">ヒント</span>
+      スマートフォンでご利用の場合、メニューは画面上部の <strong>三本線アイコン（≡）</strong> から開きます。
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3. 会員一覧</h2>
+    <p>事業所管理画面の左メニューの <strong>「会員一覧」</strong> から、自社に登録されている会員の一覧を確認できます。</p>
+    <figure class="shot-fig missing" data-file="public/adm04_members.png">
+      <img src="public/adm04_members.png" alt="会員一覧画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>会員一覧画面</figcaption>
+    </figure>
+    <h3>表示される情報</h3>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>氏名</td><td>会員のお名前</td></tr>
+        <tr><td>所属</td><td>部署名</td></tr>
+        <tr><td>電話番号</td><td>登録された電話番号</td></tr>
+        <tr><td>登録日</td><td>会員登録した日付</td></tr>
+        <tr><td>役割</td><td>「会員」または「担当者」</td></tr>
+        <tr><td>操作</td><td>退会処理ボタン</td></tr>
+      </tbody>
+    </table>
+    <p>画面上部に <strong>「自社の登録会員（◯名）」</strong> と現在の登録人数が表示されます。</p>
+
+    <h3>退会処理</h3>
+    <p>退会された方、異動・退職された方は、<strong>「退会処理」</strong> ボタンで会員から外せます。</p>
+    <ol>
+      <li>対象の会員の <strong>「退会処理」</strong> ボタンをクリックします。</li>
+      <li>確認メッセージで内容を確認のうえ、実行します。</li>
+    </ol>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>退会処理を行うと、その会員は新たな注文ができなくなります。</li>
+        <li>過去の注文履歴は保持されます（集計には引き続き反映されます）。</li>
+        <li>誤って退会処理した場合は、里の味みかわまでご連絡ください。</li>
+      </ul>
+    </div>
+
+    <h3>退会済み会員の表示</h3>
+    <p>画面右上の <strong>「退会済みも表示」</strong> チェックボックスをONにすると、退会済みの会員も一覧に含めて表示できます。</p>
+
+    <h3>パスワードの再発行</h3>
+    <p>会員がパスワードを忘れた場合、ご担当者さまにて <strong>仮パスワードの再発行</strong> ができます。</p>
+    <ol>
+      <li>会員一覧から、対象の会員の <strong>「パスワード再発行」</strong> ボタンをクリックします。
+        <figure class="shot-fig missing" data-file="public/adm05_reset_button.png">
+          <img src="public/adm05_reset_button.png" alt="パスワード再発行ボタン" onerror="this.parentNode.classList.add('missing')">
+          <figcaption>会員一覧／パスワード再発行ボタン</figcaption>
+        </figure>
+      </li>
+      <li>確認ダイアログが表示されます。内容を確認のうえ、実行します。</li>
+      <li><strong>仮パスワード（8桁の英数字）</strong> がモーダル画面に表示されます。
+        <figure class="shot-fig missing" data-file="public/adm06_reset_modal.png">
+          <img src="public/adm06_reset_modal.png" alt="仮パスワード表示モーダル" onerror="this.parentNode.classList.add('missing')">
+          <figcaption>仮パスワード表示モーダル</figcaption>
+        </figure>
+      </li>
+      <li><strong>「コピー」</strong> ボタンで仮パスワードをコピーし、対象の会員にお伝えください。</li>
+    </ol>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li><strong>仮パスワードはモーダルを閉じると二度と表示できません。</strong> 必ずコピーするか、メモを取ってから閉じてください。</li>
+        <li>紛らわしい文字（0・O・1・l・I）は使われないため、口頭でも伝えやすい文字列になっています。</li>
+        <li>仮パスワードのままでも利用は可能ですが、ログイン後、会員ご本人にマイページから任意のパスワードへ変更していただくようご案内ください。</li>
+        <li>再発行ができるのは <strong>自社の会員のみ</strong> です。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4. 代理注文</h2>
+    <p>会員に代わって、ご担当者さまが注文を入れることができます。電話やメモで注文を受けた場合などにご利用ください。</p>
+    <figure class="shot-fig missing" data-file="public/adm07_proxy_order.png">
+      <img src="public/adm07_proxy_order.png" alt="代理注文画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>代理注文画面</figcaption>
+    </figure>
+    <h3>手順</h3>
+    <ol>
+      <li>事業所管理画面の左メニューから <strong>「代理注文」</strong> を選びます。</li>
+      <li>以下を入力します。
+        <table>
+          <thead><tr><th>項目</th><th>内容</th><th class="center">必須</th></tr></thead>
+          <tbody>
+            <tr><td>注文する会員</td><td>プルダウンから対象の会員を選択</td><td class="center">✓</td></tr>
+            <tr><td>配達日</td><td>お届け希望日を選択</td><td class="center">✓</td></tr>
+            <tr><td>商品</td><td>弁当の種類を選択</td><td class="center">✓</td></tr>
+            <tr><td>個数</td><td>注文数</td><td class="center">✓</td></tr>
+          </tbody>
+        </table>
+      </li>
+      <li>内容を確認して、注文を確定します。</li>
+    </ol>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>代理注文には <strong>「代理」として記録</strong> が残ります。</li>
+        <li>注文の締切は通常の注文と同じく <strong>前営業日の15:00まで</strong> です。締切を過ぎている場合、画面上に「締切を過ぎています」とメッセージが表示され、注文できません。</li>
+        <li>代理注文した内容は、対象の会員さまの注文履歴にも反映されます。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. 注文一覧</h2>
+    <p>事業所管理画面の左メニューの <strong>「注文一覧」</strong> から、自社の全注文を一覧で確認できます。</p>
+    <figure class="shot-fig missing" data-file="public/adm08_order_list.png">
+      <img src="public/adm08_order_list.png" alt="注文一覧画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>注文一覧画面</figcaption>
+    </figure>
+    <h3>表示される情報</h3>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>所属</td><td>注文者の部署名</td></tr>
+        <tr><td>氏名</td><td>注文者のお名前</td></tr>
+        <tr><td>商品</td><td>注文した弁当</td></tr>
+        <tr><td>オプション</td><td>該当があれば表示</td></tr>
+        <tr><td>備考</td><td>該当があれば表示</td></tr>
+        <tr><td>個数</td><td>注文数</td></tr>
+        <tr><td>金額</td><td>注文金額</td></tr>
+        <tr><td>状態</td><td>「未配達」「配達済」など</td></tr>
+        <tr><td>操作</td><td>キャンセルボタン</td></tr>
+      </tbody>
+    </table>
+    <h3>日付の絞り込み</h3>
+    <p>画面左上の日付入力欄で、表示する日付を切り替えられます。件数は日付入力欄の右側に <strong>「◯件」</strong> と表示されます。</p>
+    <h3>注文のキャンセル</h3>
+    <p>未配達の注文は、<strong>「キャンセル」</strong> ボタンから取り消すことができます。</p>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>キャンセルは <strong>前営業日の15:00まで</strong> 可能です。</li>
+        <li>キャンセル後の復元はできません。</li>
+        <li>会員ご本人の操作（履歴画面からのキャンセル）と同じ扱いになります。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6. 注文票印刷</h2>
+    <p>配達日ごとの注文票を印刷できます。配達・受け渡し時の確認用にご利用ください。左メニューの <strong>「注文票印刷」</strong> を選びます。</p>
+    <figure class="shot-fig missing" data-file="public/adm09_orderslip.png">
+      <img src="public/adm09_orderslip.png" alt="注文票印刷画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>注文票印刷画面（全体）</figcaption>
+    </figure>
+    <h3>手順</h3>
+    <ol>
+      <li>画面上部の日付欄で、<strong>配達日</strong> を選択します。</li>
+      <li>選択した日の注文票が、<strong>所属（部署）ごと</strong> に表示されます。</li>
+      <li>右上の <strong>「印刷する」</strong> ボタンを押すと印刷できます。</li>
+    </ol>
+    <h3>注文票の内容</h3>
+    <ul>
+      <li>ヘッダーに <strong>配達日・印刷日・合計（個数／金額）</strong> が表示されます。</li>
+      <li>所属ごとに、氏名・商品名・オプション・備考・個数・金額・状態が一覧表示されます。</li>
+      <li>各所属の末尾に <strong>小計</strong>（個数・金額）が表示されます。</li>
+      <li>左端に <strong>確認チェック欄</strong> があり、受け渡し時のチェックにご利用いただけます。</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>7. 請求書印刷（月次集計）</h2>
+    <p>月ごとの注文集計（請求書）を印刷できます。経理処理や請求確認にご利用ください。左メニューの <strong>「請求書印刷」</strong> を選びます。</p>
+    <figure class="shot-fig missing" data-file="public/adm10_billing.png">
+      <img src="public/adm10_billing.png" alt="請求書印刷画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>請求書印刷画面（全体）</figcaption>
+    </figure>
+    <h3>手順</h3>
+    <ol>
+      <li>画面上部のプルダウンで、<strong>対象の年</strong> と <strong>月</strong> を選択します。</li>
+      <li><strong>「集計する」</strong> ボタンを押します。</li>
+      <li>集計結果が画面に表示されます。</li>
+      <li>右上の <strong>「印刷する」</strong> ボタンを押すと、ブラウザの印刷画面が開き、印刷・PDF保存ができます。</li>
+    </ol>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>対象月に注文がない場合は <strong>「この月の注文はありません」</strong> と表示され、「印刷する」ボタンは押せません（無効状態）。</li>
+        <li>「集計する」を押す前は集計結果が表示されません。年・月を変更した際は、再度「集計する」を押してください。</li>
+      </ul>
+    </div>
+
+    <h3>請求書（集計）の内容</h3>
+    <h4>▼ ヘッダー</h4>
+    <ul>
+      <li>対象月（例：2026年5月分）</li>
+      <li>タイトル（弁当注文集計）</li>
+      <li>宛名（例：Y県庁 御中）</li>
+    </ul>
+    <h4>▼ サマリー</h4>
+    <ul>
+      <li>注文合計数：当月の注文件数の合計</li>
+      <li>合計金額：当月の注文金額の合計</li>
+    </ul>
+    <h4>▼ 会員別集計</h4>
+    <p>会員ごとに、所属・氏名・注文回数・合計金額を一覧表示します。最下段に全体の合計行が表示されます。</p>
+    <h4>▼ 注文明細</h4>
+    <p>1件ずつの注文を、お届け日順に表示します。</p>
+    <table>
+      <thead><tr><th>列</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>お届け日</td><td>配達日</td></tr>
+        <tr><td>所属</td><td>部署名</td></tr>
+        <tr><td>氏名</td><td>注文者</td></tr>
+        <tr><td>商品</td><td>弁当の種類</td></tr>
+        <tr><td>オプション</td><td>該当があれば表示（例：ごはん大盛）</td></tr>
+        <tr><td>備考</td><td>該当があれば表示</td></tr>
+        <tr><td>個数</td><td>注文数</td></tr>
+        <tr><td>金額</td><td>金額</td></tr>
+      </tbody>
+    </table>
+    <figure class="shot-fig missing" data-file="public/adm11_billing_print.png">
+      <img src="public/adm11_billing_print.png" alt="請求書（印刷イメージ）" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>請求書の印刷イメージ（会員別集計・注文明細）</figcaption>
+    </figure>
+    <div class="note">
+      <span class="label">ヒント</span>
+      印刷時のヘッダー・フッターには、印刷日時・アプリ名・発行日・ページ番号などがブラウザ機能により付加される場合があります。
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>8. 業務の流れ（例）</h2>
+    <p>ご担当者さまの業務イメージです。</p>
+    <h3>日次</h3>
+    <ul>
+      <li>会員からの依頼があれば <strong>代理注文</strong> で入力</li>
+      <li>配達日に合わせて <strong>注文票印刷</strong> で当日の注文票を印刷し、受け渡しを確認</li>
+    </ul>
+    <h3>月初</h3>
+    <ul>
+      <li>前月分を <strong>請求書印刷</strong> で集計・印刷</li>
+      <li>経理担当へ提出、または請求内容と突合</li>
+    </ul>
+    <h3>随時</h3>
+    <ul>
+      <li>新入社員・異動者へ <strong>会員登録</strong> を案内（会員ご本人が登録）</li>
+      <li>退職者・異動者の <strong>退会処理</strong></li>
+      <li>会員からパスワードの問い合わせがあれば <strong>パスワード再発行</strong></li>
+      <li>担当者変更時は里の味みかわへご連絡</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>よくあるご質問</h2>
+    <dl class="faq">
+      <dt>担当者を交代したい。</dt>
+      <dd>里の味みかわまでご連絡ください。担当者権限の付け替えを行います。</dd>
+      <dt>退会処理を間違えて実行してしまった。</dt>
+      <dd>里の味みかわまでご連絡ください。復旧対応いたします。</dd>
+      <dt>請求書（月次集計）の金額が、社内記録と合わない。</dt>
+      <dd>「請求書印刷」の注文明細を1件ずつご確認ください。代理注文・キャンセルの記録もあわせてご確認いただくと原因が特定しやすくなります。</dd>
+      <dt>締切後にキャンセル・変更が必要になった。</dt>
+      <dd>里の味みかわまで直接ご連絡ください。</dd>
+      <dt>会員のパスワードがわからない／忘れた場合は？</dt>
+      <dd>会員一覧から「パスワード再発行」で仮パスワードを発行できます。発行された仮パスワードを会員にお伝えのうえ、ログイン後にマイページから任意のパスワードへ変更するようご案内ください。詳細は「3. 会員一覧 → パスワードの再発行」をご参照ください。</dd>
+    </dl>
+  </div>
+
+  <div class="section">
+    <h2>お問い合わせ</h2>
+    <div class="contact">
+      <div class="name">里の味みかわ</div>
+      <p>電話：<span class="req">【要記入】</span></p>
+      <p>メール：<span class="req">【要記入】</span></p>
+      <p>受付時間：<span class="req">【要記入】</span></p>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <p>本マニュアルの内容は予告なく変更される場合があります。</p>
+    <p><strong>改訂履歴</strong>　第1.0版　2026/05/26　初版作成</p>
+  </div>
+
+</div>
+</body>
+</html>
