@@ -9,14 +9,15 @@ import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
-// 商品名 → hq_weekly_menus.category マッピング
-// 全角/半角カッコ両対応
-const PRODUCT_TO_CATEGORY = {
-  '幕の内弁当(肉)': 'メイン肉',
-  '幕の内弁当（肉）': 'メイン肉',
-  'デラックス弁当': 'デラックスメイン',
-  '幕の内弁当(魚)': '魚',
-  '幕の内弁当（魚）': '魚',
+// 商品名 → hq_weekly_menus / weekly_menus(NPO) のcategory候補
+// HQ事業所では「メイン肉」「魚」「デラックスメイン」、
+// ウェルネス系事業所では「NPO」が返るため、複数候補で受ける
+const PRODUCT_TO_CATEGORIES = {
+  '幕の内弁当(肉)': ['メイン肉', 'NPO'],
+  '幕の内弁当（肉）': ['メイン肉', 'NPO'],
+  'デラックス弁当': ['デラックスメイン'],
+  '幕の内弁当(魚)': ['魚', 'NPO'],
+  '幕の内弁当（魚）': ['魚', 'NPO'],
 };
 
 // 登録促進モーダル
@@ -84,10 +85,12 @@ export default function OrderPage() {
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user && !multiDateMode) checkDeadline(date, true); }, [date, user, multiDateMode]);
 
-  // 配達日に対応するおかず情報を取得
+  // 配達日に対応するおかず情報を取得（事業所スラッグで参照テーブル切替）
   useEffect(() => {
     if (multiDateMode || !date) { setMenusByCategory({}); return; }
-    api.get(`/menus?delivery_date=${date}`)
+    const params = new URLSearchParams({ delivery_date: date });
+    if (slug && slug !== 'free') params.set('office_slug', slug);
+    api.get(`/menus?${params}`)
       .then(rows => {
         const map = {};
         for (const r of (rows || [])) {
@@ -97,7 +100,7 @@ export default function OrderPage() {
         setMenusByCategory(map);
       })
       .catch(() => setMenusByCategory({}));
-  }, [date, multiDateMode]);
+  }, [date, multiDateMode, slug]);
 
   useEffect(() => {
     if (!multiDateMode || !canUseMultiDay) return;
@@ -413,9 +416,9 @@ export default function OrderPage() {
                 <div style={{ fontSize:14, fontWeight:600 }}>{p.name}</div>
                 <div style={{ fontSize:13, color:'#1D9E75', fontWeight:500, marginTop:2 }}>¥{p.price.toLocaleString()}〜</div>
                 {(() => {
-                  const cat = PRODUCT_TO_CATEGORY[p.name];
-                  const items = cat ? menusByCategory[cat] : null;
-                  if (!items || items.length === 0) return null;
+                  const cats = PRODUCT_TO_CATEGORIES[p.name] || [];
+                  const items = cats.flatMap(c => menusByCategory[c] || []);
+                  if (items.length === 0) return null;
                   return (
                     <div style={{ fontSize:11, color:'#854F0B', marginTop:4, lineHeight:1.4 }}>
                       🍱 {items.join('・')}
