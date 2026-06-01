@@ -101,7 +101,7 @@ export default function AdminLayout() {
               <span style={{ fontSize: 18 }}>{icon}</span>{label}
             </NavLink>
           ))}
-          <a href="/manual_admin.html" target="_blank" rel="noopener noreferrer" onClick={handleNav} style={{
+          <a href="/manual-admin.html" target="_blank" rel="noopener noreferrer" onClick={handleNav} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '11px 16px', color: '#aaa', fontSize: 14, textDecoration: 'none',
             borderTop: '1px solid #333', marginTop: 8,
