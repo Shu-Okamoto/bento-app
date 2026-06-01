@@ -87,6 +87,14 @@ export default function OfficeAdminLayout() {
               <span style={{ fontSize: 18 }}>{icon}</span>{label}
             </NavLink>
           ))}
+          <a href="/manual_admin.html" target="_blank" rel="noopener noreferrer" onClick={handleNav} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '11px 16px', color: '#aaa', fontSize: 14, textDecoration: 'none',
+            borderTop: '1px solid #333', marginTop: 8,
+            borderLeft: '3px solid transparent',
+          }}>
+            <span style={{ fontSize: 18 }}>📖</span>管理者マニュアル
+          </a>
         </nav>
 
         <div style={{ padding: 12, color: '#888', fontSize: 11, borderTop: '1px solid #333' }}>
