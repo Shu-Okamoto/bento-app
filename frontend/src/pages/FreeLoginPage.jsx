@@ -53,7 +53,7 @@ export default function FreeLoginPage() {
           初めての方は <a href="/free/register" style={{ color: '#1D9E75' }}>フリー会員登録</a>
         </p>
         <p style={{ textAlign: 'center', marginTop: 10, fontSize: 12 }}>
-          <a href="/manual_member.html" target="_blank" rel="noopener noreferrer" style={{ color: '#1D9E75', textDecoration: 'underline' }}>
+          <a href="/manual-member.html" target="_blank" rel="noopener noreferrer" style={{ color: '#1D9E75', textDecoration: 'underline' }}>
             📖 ご利用マニュアル
           </a>
         </p>
