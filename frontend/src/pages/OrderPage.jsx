@@ -9,15 +9,16 @@ import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
 
-// 商品名 → hq_weekly_menus / weekly_menus(NPO) のcategory候補
-// HQ事業所では「メイン肉」「魚」「デラックスメイン」、
-// ウェルネス系事業所では「NPOメイン」が返るため、複数候補で受ける
+// 商品名 → 参照する category
+// HQ事業所: 幕の内弁当(肉)/(魚)/デラックス弁当 を使用 → hq_weekly_menus の各カテゴリ
+// ウェルネス系: 専用商品「幕の内弁当」を使用 → weekly_menus(category='NPOメイン')
 const PRODUCT_TO_CATEGORIES = {
-  '幕の内弁当(肉)': ['メイン肉', 'NPOメイン'],
-  '幕の内弁当（肉）': ['メイン肉', 'NPOメイン'],
+  '幕の内弁当(肉)': ['メイン肉'],
+  '幕の内弁当（肉）': ['メイン肉'],
+  '幕の内弁当(魚)': ['魚'],
+  '幕の内弁当（魚）': ['魚'],
   'デラックス弁当': ['デラックスメイン'],
-  '幕の内弁当(魚)': ['魚', 'NPOメイン'],
-  '幕の内弁当（魚）': ['魚', 'NPOメイン'],
+  '幕の内弁当': ['NPOメイン'],
 };
 
 // 登録促進モーダル
