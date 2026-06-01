@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>みかわ弁当注文アプリ 利用マニュアル（会員向け）</title>
+<style>
+  :root{
+    --green:#1f9d6b;
+    --green-dark:#157a52;
+    --green-pale:#eaf6f0;
+    --ink:#2b2b2b;
+    --sub:#6b7670;
+    --line:#d9e2dd;
+    --accent:#a4242c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    color:var(--ink);
+    line-height:1.8;
+    background:#f4f6f5;
+    font-size:14px;
+  }
+  .page{
+    max-width:800px;
+    margin:24px auto;
+    background:#fff;
+    padding:48px 56px;
+    box-shadow:0 2px 16px rgba(0,0,0,.08);
+  }
+  .cover{
+    text-align:center;
+    padding:60px 0 48px;
+    border-bottom:3px solid var(--green);
+    margin-bottom:40px;
+  }
+  .cover .logo{font-size:13px;letter-spacing:.3em;color:var(--accent);font-weight:700;margin-bottom:6px;}
+  .cover .brand{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:.15em;margin-bottom:32px;}
+  .cover h1{font-size:30px;font-weight:700;margin:0 0 8px;color:var(--ink);letter-spacing:.05em;}
+  .cover .target{display:inline-block;background:var(--green-pale);color:var(--green-dark);font-weight:700;padding:6px 22px;border-radius:999px;font-size:14px;margin-top:18px;}
+  .cover .meta{color:var(--sub);font-size:12px;margin-top:24px;}
+
+  h2{font-size:19px;color:var(--green-dark);border-left:6px solid var(--green);padding:4px 0 4px 14px;margin:40px 0 16px;letter-spacing:.04em;}
+  h3{font-size:15px;color:var(--ink);margin:24px 0 10px;padding-bottom:6px;border-bottom:1px dashed var(--line);}
+  h4{font-size:14px;color:var(--green-dark);margin:18px 0 6px;}
+  p{margin:8px 0;}
+  ol,ul{margin:8px 0 8px 0;padding-left:1.5em;}
+  li{margin:5px 0;}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--green);color:#fff;font-weight:600;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#f7faf8;}
+  td.center,th.center{text-align:center;}
+
+  /* スクショ枠（画像差し込み式） */
+  .shot-fig{margin:14px 0;text-align:center;}
+  .shot-fig img{max-width:100%;border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.10);}
+  .shot-fig figcaption{font-size:11px;color:var(--sub);margin-top:6px;}
+  .shot-fig.missing img{display:none;}
+  .shot-fig.missing::before{
+    content:"📷 画像未挿入：" attr(data-file);
+    display:block;
+    border:2px dashed var(--green);
+    background:repeating-linear-gradient(45deg,#fafdfb,#fafdfb 10px,#f0f7f3 10px,#f0f7f3 20px);
+    color:var(--green-dark);text-align:center;padding:22px 16px;border-radius:8px;font-size:13px;font-weight:600;
+  }
+
+  .note{background:#fff8e9;border:1px solid #f0dca6;border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px;}
+  .note .label{font-weight:700;color:#9a7212;display:block;margin-bottom:4px;}
+  .note ul{margin:4px 0 0;}
+
+  .callout{background:var(--green-pale);border-left:4px solid var(--green);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-weight:600;color:var(--green-dark);}
+
+  .faq dt{font-weight:700;color:var(--ink);margin-top:14px;}
+  .faq dt::before{content:"Q. ";color:var(--green);font-weight:700;}
+  .faq dd{margin:4px 0 0;padding-left:1.4em;color:#444;}
+  .faq dd::before{content:"A. ";color:var(--accent);font-weight:700;margin-left:-1.4em;}
+
+  .contact{background:var(--green-pale);border-radius:10px;padding:20px 24px;margin:16px 0;}
+  .contact .name{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px;}
+  .req{color:#b03a3a;background:#fdeaea;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:600;}
+
+  .footer-note{color:var(--sub);font-size:11px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px;}
+
+  .print-bar{position:sticky;top:0;z-index:10;background:var(--green-dark);color:#fff;text-align:center;padding:10px;font-size:13px;}
+  .print-bar button{background:#fff;color:var(--green-dark);border:none;padding:7px 18px;border-radius:6px;font-weight:700;cursor:pointer;margin-left:10px;font-family:inherit;}
+  .print-bar button:hover{background:#eafff5;}
+
+  @media print{
+    body{background:#fff;font-size:11pt;}
+    .page{box-shadow:none;margin:0;max-width:none;padding:0 12mm;}
+    .print-bar{display:none;}
+    h2,h3,h4{page-break-after:avoid;}
+    table,.shot-fig,.note,.callout{page-break-inside:avoid;}
+    .cover{page-break-after:always;}
+    .section{page-break-inside:avoid;}
+  }
+  @page{margin:14mm;}
+</style>
+</head>
+<body>
+
+<div class="print-bar">
+  印刷・PDF保存はこちら →
+  <button onclick="window.print()">🖨 印刷する</button>
+</div>
+
+<div class="page">
+
+  <div class="cover">
+    <div class="logo">里の味</div>
+    <div class="brand">み か わ</div>
+    <h1>みかわ弁当注文アプリ<br>利用マニュアル</h1>
+    <div class="target">ご利用の会員さま向け</div>
+    <div class="meta">発行日：2026年5月　／　第1.0版</div>
+  </div>
+
+  <div class="section">
+    <h2>はじめに</h2>
+    <p>このマニュアルは、「みかわ弁当注文アプリ」をご利用いただく会員さま向けの操作手順書です。会員登録から弁当のご注文、注文履歴の確認までの一連の流れをご案内します。</p>
+    <div class="note">
+      <span class="label">ご利用にあたって</span>
+      <ul>
+        <li>スマートフォン・パソコンのどちらからでもご利用いただけます。</li>
+        <li>ご注文の締切は <strong>前営業日の15:00</strong> までです。</li>
+        <li>締切を過ぎた日付の注文・変更・キャンセルはできません。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>1. 会員登録</h2>
+    <p>初めてご利用の方は、最初に会員登録が必要です。</p>
+    <h3>手順</h3>
+    <ol>
+      <li>ログイン画面下の <strong>「初めての方は 会員登録」</strong> をクリック（タップ）します。
+        <figure class="shot-fig missing" data-file="mem01_login.png">
+          <img src="images/mem01_login.png" alt="ログイン画面" onerror="this.parentNode.classList.add('missing')">
+          <figcaption>ログイン画面（「会員登録」リンクを赤枠で示す）</figcaption>
+        </figure>
+      </li>
+      <li>登録フォームに以下の項目を入力します。
+        <table>
+          <thead><tr><th>項目</th><th>内容</th><th class="center">必須</th></tr></thead>
+          <tbody>
+            <tr><td>お名前</td><td>フルネームを入力</td><td class="center">✓</td></tr>
+            <tr><td>所属（部署名）</td><td>例：総務課、営業部 第一課</td><td class="center"></td></tr>
+            <tr><td>電話番号</td><td>ハイフンなし／ありのどちらでも可</td><td class="center">✓</td></tr>
+            <tr><td>パスワード</td><td>お好きな文字列（6文字以上）</td><td class="center">✓</td></tr>
+            <tr><td>パスワード（確認）</td><td>上と同じものを再入力</td><td class="center">✓</td></tr>
+          </tbody>
+        </table>
+        <figure class="shot-fig missing" data-file="mem02_signup.png">
+          <img src="images/mem02_signup.png" alt="会員登録画面" onerror="this.parentNode.classList.add('missing')">
+          <figcaption>会員登録画面（入力例）</figcaption>
+        </figure>
+      </li>
+      <li><strong>「登録する」</strong> ボタンを押すと登録完了です。そのまま注文画面へ進めます。</li>
+    </ol>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>画面上部の事業所名（例：「Y県庁」）が、お勤め先と一致していることをご確認ください。</li>
+        <li>電話番号は、ログイン時のIDになります。お間違いのないようご入力ください。</li>
+        <li>パスワードは忘れないように控えておいてください。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2. ログイン</h2>
+    <p>2回目以降は、ログイン画面からご利用ください。</p>
+    <h3>手順</h3>
+    <ol>
+      <li><strong>電話番号</strong> と <strong>パスワード</strong> を入力します。</li>
+      <li><strong>「ログイン」</strong> ボタンを押します。</li>
+    </ol>
+    <figure class="shot-fig missing" data-file="mem01_login.png">
+      <img src="images/mem01_login.png" alt="ログイン画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>ログイン画面</figcaption>
+    </figure>
+    <p>ログインに成功すると、注文画面（お届け日の選択画面）が表示されます。</p>
+  </div>
+
+  <div class="section">
+    <h2>3. 弁当を注文する</h2>
+
+    <h3>3-1. お届け日を選ぶ</h3>
+    <p>注文画面では、お届け希望日を選択します。<strong>「1日」</strong> と <strong>「複数日」</strong> の2つのモードがあります。</p>
+
+    <h4>▼ 1日だけ注文する場合</h4>
+    <ol>
+      <li>画面右上の <strong>「1日」</strong> タブが選択されていることを確認します。</li>
+      <li>カレンダーアイコンから、お届け希望日を1つ選びます。</li>
+      <li><strong>「メニューを見る →」</strong> をタップします。</li>
+    </ol>
+    <figure class="shot-fig missing" data-file="mem04_date_single.png">
+      <img src="images/mem04_date_single.png" alt="1日モードの日付選択画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>1日モードの日付選択画面</figcaption>
+    </figure>
+
+    <h4>▼ 複数日まとめて注文する場合</h4>
+    <ol>
+      <li>画面右上の <strong>「複数日」</strong> タブを選択します。</li>
+      <li>注文したい日付のチェックボックスにチェックを入れます（複数選択可）。</li>
+      <li><strong>「メニューを見る →」</strong> をタップします。</li>
+    </ol>
+    <figure class="shot-fig missing" data-file="mem05_date_multi.png">
+      <img src="images/mem05_date_multi.png" alt="複数日モードの日付選択画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>複数日モードの日付選択画面</figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>グレーアウトされている日付（例：「配達日が休日です」）は選択できません。</li>
+        <li>お休み期間（盆休み・年末年始など）は画面上部にお知らせが表示されます。</li>
+      </ul>
+    </div>
+
+    <h3>3-2. メニューを選ぶ</h3>
+    <p>お届け日を選択して進むと、注文可能な弁当の一覧が表示されます。</p>
+    <ol>
+      <li>注文したいお弁当を選びます。</li>
+      <li>個数を指定します。</li>
+      <li>内容を確認のうえ、注文を確定します。</li>
+    </ol>
+    <figure class="shot-fig missing" data-file="mem06_menu.png">
+      <img src="images/mem06_menu.png" alt="メニュー選択画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>メニュー選択画面</figcaption>
+    </figure>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>一部のお弁当には <strong>曜日制限</strong> があります（例：「月・火・木・金・土のみ」）。表示をご確認ください。</li>
+        <li>価格表示の「〜」はオプションにより金額が変動することを示します。</li>
+      </ul>
+    </div>
+
+    <h3>3-3. 注文完了の確認</h3>
+    <p>注文が完了すると、画面下部に確認メッセージが表示されます。</p>
+    <div class="callout">✓ 4日分の注文が完了しました！</div>
+    <figure class="shot-fig missing" data-file="mem07_order_complete.png">
+      <img src="images/mem07_order_complete.png" alt="注文完了メッセージ" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>注文完了メッセージ表示</figcaption>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>4. 注文履歴の確認・変更・キャンセル</h2>
+    <p>画面下部のメニューから <strong>「履歴」</strong> をタップすると、ご自身の注文履歴が確認できます。</p>
+    <figure class="shot-fig missing" data-file="mem08_history.png">
+      <img src="images/mem08_history.png" alt="注文履歴画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>注文履歴画面</figcaption>
+    </figure>
+    <h3>表示される情報</h3>
+    <ul>
+      <li>商品名（例：幕の内弁当（肉））</li>
+      <li>お届け日と個数</li>
+      <li>金額</li>
+      <li>状態（「配達待ち」「配達済」など）</li>
+    </ul>
+    <h3>注文の編集・キャンセル</h3>
+    <p>「配達待ち」状態の注文は、<strong>前営業日の15:00まで</strong> であれば編集・キャンセルが可能です。</p>
+    <ul>
+      <li><strong>編集</strong> ボタン：個数や商品の変更ができます。</li>
+      <li><strong>キャンセル</strong> ボタン：注文を取り消します。</li>
+    </ul>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>締切（前営業日15:00）を過ぎると、編集・キャンセルボタンは操作できなくなります。</li>
+        <li>キャンセル後の復元はできません。再度ご注文ください。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. マイページ</h2>
+    <p>画面下部の <strong>「マイページ」</strong> から、登録情報の確認・変更ができます。</p>
+    <figure class="shot-fig missing" data-file="mem09_mypage.png">
+      <img src="images/mem09_mypage.png" alt="マイページ画面" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>マイページ画面</figcaption>
+    </figure>
+    <ul>
+      <li>お名前、所属、電話番号の変更</li>
+      <li>パスワードの変更</li>
+    </ul>
+
+    <h3>パスワードの変更</h3>
+    <p>マイページの <strong>「パスワード変更」</strong> セクションから、ご自身でパスワードを変更できます。</p>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>現在のパスワード</td><td>今お使いのパスワード</td></tr>
+        <tr><td>新しいパスワード</td><td>新しく設定するパスワード（<strong>6文字以上</strong>）</td></tr>
+        <tr><td>新しいパスワード（確認）</td><td>上と同じものを再入力</td></tr>
+      </tbody>
+    </table>
+    <p>入力後、変更ボタンを押すとパスワードが更新されます。</p>
+    <figure class="shot-fig missing" data-file="mem10_password_change.png">
+      <img src="images/mem10_password_change.png" alt="パスワード変更セクション" onerror="this.parentNode.classList.add('missing')">
+      <figcaption>マイページ／パスワード変更セクション</figcaption>
+    </figure>
+    <div class="note">
+      <span class="label">ご注意</span>
+      <ul>
+        <li>現在のパスワードが正しく入力できない場合、変更はできません。</li>
+        <li>パスワードを忘れてしまった場合は、事業所のご担当者さままでご連絡ください（担当者による再発行が可能です）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6. ログアウト</h2>
+    <p>ご利用終了時は、画面下部の <strong>「ログアウト」</strong> をタップしてください。共用のパソコン・タブレットをお使いの場合は、必ずログアウトしてからお閉じください。</p>
+  </div>
+
+  <div class="section">
+    <h2>よくあるご質問</h2>
+    <dl class="faq">
+      <dt>パスワードを変更したい。</dt>
+      <dd>マイページの「パスワード変更」セクションから、ご自身で変更できます。詳細は「5. マイページ」をご参照ください。</dd>
+      <dt>パスワードを忘れてしまいました。</dt>
+      <dd>事業所のご担当者さままでご連絡ください。担当者にてパスワードの再発行が可能です。再発行された仮パスワードでログイン後、マイページからお好きなパスワードに変更してください。</dd>
+      <dt>締切後に注文を変更したい。</dt>
+      <dd>システム上では変更できません。事業所のご担当者さま、または里の味みかわまで直接ご連絡ください。</dd>
+      <dt>違う事業所の画面が表示されています。</dt>
+      <dd>ご利用のURLが正しいか、事業所のご担当者さまにご確認ください。</dd>
+      <dt>注文した弁当が届きません。</dt>
+      <dd>里の味みかわまで直接ご連絡ください。</dd>
+    </dl>
+  </div>
+
+  <div class="section">
+    <h2>お問い合わせ</h2>
+    <div class="contact">
+      <div class="name">里の味みかわ</div>
+      <p>電話：<span class="req">【要記入】</span></p>
+      <p>メール：<span class="req">【要記入】</span></p>
+      <p>受付時間：<span class="req">【要記入】</span></p>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <p>本マニュアルの内容は予告なく変更される場合があります。</p>
+    <p><strong>改訂履歴</strong>　第1.0版　2026/05/26　初版作成</p>
+  </div>
+
+</div>
+</body>
+</html>
