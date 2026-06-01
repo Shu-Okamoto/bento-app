@@ -3,7 +3,7 @@ const supabase = require('../utils/supabase');
 
 // 指定日付・事業所のおかず情報を返す
 // 通常: hq_weekly_menus を参照
-// ウェルネス系事業所: weekly_menus を参照（category = 'NPO'）
+// ウェルネス系事業所: weekly_menus を参照（category = 'NPOメイン'）
 //
 // GET /api/menus?delivery_date=YYYY-MM-DD&office_slug=...
 router.get('/', async (req, res) => {
@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
     .select('category, menu_name')
     .eq('week_start', week_start)
     .eq('day_of_week', day_of_week);
-  if (useNpo) q = q.eq('category', 'NPO');
+  if (useNpo) q = q.eq('category', 'NPOメイン');
 
   const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
