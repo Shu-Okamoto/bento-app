@@ -101,6 +101,14 @@ export default function AdminLayout() {
               <span style={{ fontSize: 18 }}>{icon}</span>{label}
             </NavLink>
           ))}
+          <a href="/manual_admin.html" target="_blank" rel="noopener noreferrer" onClick={handleNav} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '11px 16px', color: '#aaa', fontSize: 14, textDecoration: 'none',
+            borderTop: '1px solid #333', marginTop: 8,
+            borderLeft: '3px solid transparent',
+          }}>
+            <span style={{ fontSize: 18 }}>📖</span>管理者マニュアル
+          </a>
         </nav>
 
         <button onClick={handleLogout} style={{ margin: 12, padding: 9, background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 8, color: '#aaa', fontSize: 13, cursor: 'pointer' }}>

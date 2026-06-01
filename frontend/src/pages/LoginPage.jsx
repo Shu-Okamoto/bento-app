@@ -78,6 +78,11 @@ export default function LoginPage() {
         <p style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: '#888', lineHeight: 1.6 }}>
           パスワードを忘れた方は、<br />事業所のご担当者に再発行をご依頼ください。
         </p>
+        <p style={{ textAlign: 'center', marginTop: 10, fontSize: 12 }}>
+          <a href="/manual_member.html" target="_blank" rel="noopener noreferrer" style={{ color: '#1D9E75', textDecoration: 'underline' }}>
+            📖 ご利用マニュアル
+          </a>
+        </p>
       </div>
     </div>
   );
