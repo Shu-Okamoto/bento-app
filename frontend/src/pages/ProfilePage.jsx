@@ -12,7 +12,11 @@ export default function ProfilePage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [changingPw, setChangingPw] = useState(false);
-  useEffect(() => { api.get('/members/me').then(setForm); }, []);
+  const [points, setPoints] = useState(0);
+  useEffect(() => {
+    api.get('/members/me').then(setForm);
+    api.get('/points/me').then(r => setPoints(r.points || 0)).catch(() => {});
+  }, []);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   const setPwField = k => e => setPw(p => ({ ...p, [k]: e.target.value }));
 
@@ -61,6 +65,17 @@ export default function ProfilePage() {
   return (
     <div>
       <div className="page-header"><h1>マイページ</h1></div>
+
+      <div className="card" style={{ background: 'linear-gradient(135deg, #E1F5EE, #d8f0e5)', border: '1px solid #9FE1CB', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 12, color: '#0F6E56', fontWeight: 600, marginBottom: 4 }}>🪙 保有ポイント</div>
+            <div style={{ fontSize: 11, color: '#666' }}>注文時の値引きにご利用いただけます</div>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0F6E56' }}>{points.toLocaleString()} <span style={{ fontSize: 13, fontWeight: 600 }}>pt</span></div>
+        </div>
+      </div>
+
       <div className="card">
         <form onSubmit={save}>
           <div className="form-group"><label>お名前</label><input value={form.name} onChange={set('name')} required /></div>

@@ -58,15 +58,37 @@ async function checkDeadline(delivery_date, office_id) {
   let deadlineType = 'prev_day';
   let deadlineHour = 15;
   let deadlineMinute = 0;
+  let isFreeOffice = false;
 
   if (office_id) {
     const { data: office } = await supabase
-      .from('offices').select('deadline_type, deadline_hour, deadline_minute').eq('id', office_id).single();
+      .from('offices').select('slug, deadline_type, deadline_hour, deadline_minute').eq('id', office_id).single();
     if (office) {
-      deadlineType = office.deadline_type || 'prev_day';
-      deadlineHour = office.deadline_hour ?? 15;
-      deadlineMinute = office.deadline_minute ?? 0;
+      if (office.slug === 'free') {
+        isFreeOffice = true; // フリー会員は前々日18時固定
+      } else {
+        deadlineType = office.deadline_type || 'prev_day';
+        deadlineHour = office.deadline_hour ?? 15;
+        deadlineMinute = office.deadline_minute ?? 0;
+      }
     }
+  }
+
+  // フリー会員: 前々日18時固定
+  if (isFreeOffice) {
+    const [dy, dm, dd] = delivery_date.split('-').map(Number);
+    const dt = new Date(Date.UTC(dy, dm - 1, dd));
+    dt.setUTCDate(dt.getUTCDate() - 2);
+    const deadline = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate(), 18 - 9, 0, 0));
+    const now = new Date();
+    if (now > deadline) {
+      return { allowed: false, reason: '締切を過ぎています（前々日18:00まで）' };
+    }
+    return {
+      allowed: true,
+      deadline: deadline.toISOString(),
+      deadlineLabel: '前々日18:00まで',
+    };
   }
 
   // 締切なし
@@ -146,7 +168,7 @@ router.get('/my', authMiddleware, async (req, res) => {
 
 // 注文作成
 router.post('/', authMiddleware, async (req, res) => {
-  const { product_id, quantity, delivery_date, options, note, payment_method } = req.body;
+  const { product_id, quantity, delivery_date, options, note, payment_method, points_used } = req.body;
   const check = await checkDeadline(delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: check.reason });
 
@@ -154,11 +176,23 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!product) return res.status(404).json({ error: '商品が見つかりません' });
 
   const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
-  const total_price = (product.price + optTotal) * quantity;
+  const subTotal = (product.price + optTotal) * quantity;
+
+  // ポイント利用処理（1ポイント=1円）
+  let usedPoints = 0;
+  if (points_used && Number(points_used) > 0) {
+    const { data: member } = await supabase.from('members').select('points').eq('id', req.user.id).single();
+    const avail = member?.points || 0;
+    usedPoints = Math.min(Math.floor(Number(points_used)), avail, subTotal);
+    if (usedPoints > 0) {
+      await supabase.from('members').update({ points: avail - usedPoints }).eq('id', req.user.id);
+    }
+  }
+  const total_price = Math.max(0, subTotal - usedPoints);
   const product_name = product.name;
 
   const { data: order, error } = await supabase.from('orders')
-    .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false, note: note || null, payment_method: payment_method || 'cash' })
+    .insert({ member_id: req.user.id, office_id: req.user.office_id, product_id, quantity, delivery_date, total_price, is_delivered: false, note: note || null, payment_method: payment_method || 'cash', points_used: usedPoints })
     .select().single();
   if (error) return res.status(400).json({ error: error.message });
 
@@ -241,8 +275,27 @@ router.get('/admin', adminMiddleware, async (req, res) => {
 
 // 配達完了（管理者）
 router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
+  // 配達完了とともにポイント付与
+  const { data: order } = await supabase.from('orders')
+    .select('id, member_id, total_price, points_earned, is_delivered').eq('id', req.params.id).single();
+  if (!order) return res.status(404).json({ error: '注文が見つかりません' });
+
+  let earned = 0;
+  // すでに配達済（再呼び出し）の場合は二重付与しない
+  if (!order.is_delivered && order.member_id && order.total_price > 0) {
+    const { data: settings } = await supabase.from('point_settings').select('*').eq('id', 1).single();
+    const rate = settings?.campaign_active ? (settings.rate_campaign ?? 3) : (settings?.rate_normal ?? 1);
+    earned = Math.floor(order.total_price * rate / 100);
+    if (earned > 0) {
+      const { data: member } = await supabase.from('members').select('points').eq('id', order.member_id).single();
+      await supabase.from('members')
+        .update({ points: (member?.points || 0) + earned })
+        .eq('id', order.member_id);
+    }
+  }
+
   const { data, error } = await supabase.from('orders')
-    .update({ is_delivered: true, delivered_at: new Date().toISOString() })
+    .update({ is_delivered: true, delivered_at: new Date().toISOString(), points_earned: earned || order.points_earned || 0 })
     .eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
