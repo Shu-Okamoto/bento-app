@@ -74,20 +74,28 @@ async function checkDeadline(delivery_date, office_id) {
     }
   }
 
-  // フリー会員: 前々日18時固定
+  // フリー会員: 前々営業日18時固定（2日前が休日なら直前の営業日に丸める）
   if (isFreeOffice) {
     const [dy, dm, dd] = delivery_date.split('-').map(Number);
     const dt = new Date(Date.UTC(dy, dm - 1, dd));
     dt.setUTCDate(dt.getUTCDate() - 2);
-    const deadline = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate(), 18 - 9, 0, 0));
+    let target = dt.toISOString().split('T')[0];
+    while (isHoliday(target, settings)) {
+      const [ty, tm, td] = target.split('-').map(Number);
+      const back = new Date(Date.UTC(ty, tm - 1, td));
+      back.setUTCDate(back.getUTCDate() - 1);
+      target = back.toISOString().split('T')[0];
+    }
+    const [py, pm, pd] = target.split('-').map(Number);
+    const deadline = new Date(Date.UTC(py, pm - 1, pd, 18 - 9, 0, 0));
     const now = new Date();
     if (now > deadline) {
-      return { allowed: false, reason: '締切を過ぎています（前々日18:00まで）' };
+      return { allowed: false, reason: '締切を過ぎています（前々営業日18:00まで）' };
     }
     return {
       allowed: true,
       deadline: deadline.toISOString(),
-      deadlineLabel: '前々日18:00まで',
+      deadlineLabel: '前々営業日18:00まで',
     };
   }
 
