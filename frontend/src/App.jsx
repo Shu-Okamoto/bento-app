@@ -13,6 +13,7 @@ import AdminLoginPage    from './pages/AdminLoginPage';
 import OrderPage         from './pages/OrderPage';
 import HistoryPage       from './pages/HistoryPage';
 import ProfilePage       from './pages/ProfilePage';
+import ContactPage       from './pages/ContactPage';
 import MemberLayout       from './components/MemberLayout';
 import AdminLayout        from './components/AdminLayout';
 import OfficeAdminLayout  from './components/OfficeAdminLayout';
@@ -216,6 +217,7 @@ export default function App() {
               {/* 汎用 */}
               <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/contact"  element={<ContactPage />} />
               <Route path="/"         element={<RootRedirect />} />
               <Route path="*"         element={<RootRedirect />} />
             </Routes>
