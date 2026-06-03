@@ -534,6 +534,8 @@ export function Settings() {
   const [notify, setNotify] = useState({ email_enabled:false, email_address:'', line_enabled:false });
   const [lineStatus, setLineStatus] = useState({ line_connected:false });
   const [notifySaved, setNotifySaved] = useState(false);
+  const [points, setPoints] = useState({ rate_normal: 1, rate_campaign: 3, campaign_active: false });
+  const [pointsSaved, setPointsSaved] = useState(false);
 
   useEffect(() => {
     api.get('/holidays').then(setSettings);
@@ -542,6 +544,11 @@ export function Settings() {
       email_enabled: d.email_enabled||false,
       email_address: d.email_address||'',
       line_enabled: d.line_enabled||false,
+    })).catch(()=>{});
+    api.get('/points/settings').then(d => setPoints({
+      rate_normal: d.rate_normal ?? 1,
+      rate_campaign: d.rate_campaign ?? 3,
+      campaign_active: !!d.campaign_active,
     })).catch(()=>{});
   }, []);
 
@@ -553,6 +560,11 @@ export function Settings() {
   async function saveNotify() {
     await api.put('/line/settings', notify);
     setNotifySaved(true); setTimeout(() => setNotifySaved(false), 2000);
+  }
+
+  async function savePoints() {
+    await api.put('/points/settings', points);
+    setPointsSaved(true); setTimeout(() => setPointsSaved(false), 2000);
   }
 
   function addExtra() {
@@ -618,6 +630,38 @@ export function Settings() {
 
         <button className="btn btn-primary" onClick={saveNotify}>
           {notifySaved ? '✓ 保存しました' : '通知設定を保存'}
+        </button>
+      </div>
+
+      {/* ポイント設定 */}
+      <div className="card" style={{ maxWidth:560, marginBottom:16 }}>
+        <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>🪙 ポイント設定</h2>
+        <p style={{ fontSize:13, color:'#666', marginBottom:14 }}>注文金額に対する付与率（％）。配達完了時に会員へ加算されます。</p>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+          <div className="form-group" style={{ marginBottom:0 }}>
+            <label>通常レート（％）</label>
+            <input type="number" min={0} max={100} value={points.rate_normal}
+              onChange={e => setPoints(p => ({ ...p, rate_normal: e.target.value }))} />
+          </div>
+          <div className="form-group" style={{ marginBottom:0 }}>
+            <label>キャンペーンレート（％）</label>
+            <input type="number" min={0} max={100} value={points.rate_campaign}
+              onChange={e => setPoints(p => ({ ...p, rate_campaign: e.target.value }))} />
+          </div>
+        </div>
+
+        <label style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background: points.campaign_active ? '#E1F5EE' : '#f5f4f0', border:`1px solid ${points.campaign_active ? '#9FE1CB' : '#e0dfd8'}`, borderRadius:8, cursor:'pointer', marginBottom:14 }}>
+          <input type="checkbox" checked={points.campaign_active}
+            onChange={e => setPoints(p => ({ ...p, campaign_active: e.target.checked }))}
+            style={{ accentColor:'#1D9E75', width:18, height:18 }} />
+          <span style={{ fontSize:14, fontWeight:600 }}>
+            キャンペーン中（{points.campaign_active ? `${points.rate_campaign}%` : `${points.rate_normal}%`}付与）
+          </span>
+        </label>
+
+        <button className="btn btn-primary" onClick={savePoints}>
+          {pointsSaved ? '✓ 保存しました' : 'ポイント設定を保存'}
         </button>
       </div>
 
