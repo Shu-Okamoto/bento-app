@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useOffice } from '../context/OfficeContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/Toast';
 import { tomorrowJST, formatDeadlineJa, formatDateJa, getDayOfWeek } from '../utils/date';
@@ -50,13 +51,15 @@ function RegisterModal({ onClose, slug }) {
 
 export default function OrderPage() {
   const { user } = useAuth();
+  const { office } = useOffice();
   const location = useLocation();
   const { showToast } = useToast();
   const cart = useCart();
 
   const pathSlug = location.pathname.match(/\/o\/([^/]+)/)?.[1];
   const isFreeRoute = location.pathname.startsWith('/free');
-  const slug = pathSlug || (isFreeRoute ? 'free' : null);
+  // サブドメインアクセス時は URL に /o/<slug> が含まれないため OfficeContext から補う
+  const slug = pathSlug || office?.slug || (isFreeRoute ? 'free' : null);
   const isGuest = !user;
   const isOffice = !isFreeRoute && !isGuest;
 
