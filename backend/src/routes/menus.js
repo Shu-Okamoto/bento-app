@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const supabase = require('../utils/supabase');
 
 // 指定日付・事業所のおかず情報を返す
-// 通常: hq_weekly_menus を参照
-// ウェルネス系事業所: weekly_menus を参照（category = 'NPOメイン'）
+// 参照テーブルは常に hq_weekly_menus。
+// ウェルネス系事業所のみ category='NPOメイン' に絞り込む。
 //
 // 事業所の判定は以下の優先順位:
 //   1. Authorization ヘッダから取得した office_id
@@ -48,9 +48,8 @@ router.get('/', async (req, res) => {
   }
   const useNpo = !!(officeName && officeName.includes('ウェルネス'));
 
-  const table = useNpo ? 'weekly_menus' : 'hq_weekly_menus';
   let q = supabase
-    .from(table)
+    .from('hq_weekly_menus')
     .select('category, menu_name')
     .eq('week_start', week_start)
     .eq('day_of_week', day_of_week);
