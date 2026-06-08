@@ -1,11 +1,16 @@
 const router = require('express').Router();
+const jwt = require('jsonwebtoken');
 const supabase = require('../utils/supabase');
 
 // 指定日付・事業所のおかず情報を返す
 // 通常: hq_weekly_menus を参照
 // ウェルネス系事業所: weekly_menus を参照（category = 'NPOメイン'）
 //
-// GET /api/menus?delivery_date=YYYY-MM-DD&office_slug=...
+// 事業所の判定は以下の優先順位:
+//   1. Authorization ヘッダから取得した office_id
+//   2. クエリパラメータ office_slug
+//
+// GET /api/menus?delivery_date=YYYY-MM-DD[&office_slug=...]
 router.get('/', async (req, res) => {
   const { delivery_date, office_slug } = req.query;
   if (!delivery_date) return res.status(400).json({ error: 'delivery_date required' });
@@ -13,20 +18,35 @@ router.get('/', async (req, res) => {
   const [y, m, d] = delivery_date.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   const dow = dt.getUTCDay(); // 0=Sun..6=Sat
-  if (dow === 0) return res.json([]); // 日曜は対象外
+  if (dow === 0) return res.json([]);
 
-  const day_of_week = dow; // 1=Mon..6=Sat
+  const day_of_week = dow;
   const monday = new Date(dt);
   monday.setUTCDate(dt.getUTCDate() - (dow - 1));
   const week_start = monday.toISOString().split('T')[0];
 
+  // JWT から office_id を取得（あれば優先）
+  let userOfficeId = null;
+  const header = req.headers.authorization;
+  if (header) {
+    try {
+      const payload = jwt.verify(header.replace('Bearer ', ''), process.env.JWT_SECRET);
+      userOfficeId = payload?.office_id || null;
+    } catch { /* 無効なJWTは無視 */ }
+  }
+
   // 事業所種別を判定
-  let useNpo = false;
-  if (office_slug) {
+  let officeName = null;
+  if (userOfficeId) {
+    const { data: office } = await supabase.from('offices')
+      .select('name').eq('id', userOfficeId).single();
+    officeName = office?.name || null;
+  } else if (office_slug) {
     const { data: office } = await supabase.from('offices')
       .select('name').eq('slug', office_slug).single();
-    if (office?.name?.includes('ウェルネス')) useNpo = true;
+    officeName = office?.name || null;
   }
+  const useNpo = !!(officeName && officeName.includes('ウェルネス'));
 
   const table = useNpo ? 'weekly_menus' : 'hq_weekly_menus';
   let q = supabase
