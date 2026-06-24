@@ -281,6 +281,24 @@ router.get('/admin', adminMiddleware, async (req, res) => {
   res.json(data);
 });
 
+// 受領確認（注文者本人）
+// 配達済（is_delivered=true）の注文に対してのみ実行可能
+router.patch('/:id/receive', authMiddleware, async (req, res) => {
+  const { data: order } = await supabase.from('orders')
+    .select('id, member_id, is_delivered, received_at')
+    .eq('id', req.params.id).single();
+  if (!order) return res.status(404).json({ error: '注文が見つかりません' });
+  if (order.member_id !== req.user.id) return res.status(403).json({ error: 'この注文を受領する権限がありません' });
+  if (!order.is_delivered) return res.status(400).json({ error: 'まだ配達されていません' });
+  if (order.received_at) return res.json(order); // すでに受領済みなら冪等
+
+  const { data, error } = await supabase.from('orders')
+    .update({ received_at: new Date().toISOString() })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
 // 配達完了（管理者）
 router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
   // 配達完了とともにポイント付与
