@@ -1,7 +1,23 @@
 const router = require('express').Router();
 const supabase = require('../utils/supabase');
 const { authMiddleware, adminMiddleware, officeAdminMiddleware } = require('../middleware/auth');
-const { notifyNewOrder } = require('../utils/notify');
+const { notifyNewOrder, notifyOrderEdit, notifyOrderCancel } = require('../utils/notify');
+
+// 注文情報を通知用にまとめて取得（失敗してもエラーを投げず空オブジェクトを返す）
+async function fetchOrderContext({ member_id, office_id, product_id }) {
+  try {
+    const [member, office, product] = await Promise.all([
+      member_id ? supabase.from('members').select('name').eq('id', member_id).single().then(r => r.data) : null,
+      office_id ? supabase.from('offices').select('name').eq('id', office_id).single().then(r => r.data) : null,
+      product_id ? supabase.from('products').select('name').eq('id', product_id).single().then(r => r.data) : null,
+    ]);
+    return {
+      memberName: member?.name || '不明',
+      officeName: office?.name || '不明',
+      productName: product?.name || '不明',
+    };
+  } catch { return { memberName: '不明', officeName: '不明', productName: '不明' }; }
+}
 
 const JP_HOLIDAYS = [
   '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
@@ -249,6 +265,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
   if (options && options.length > 0) {
     await supabase.from('order_options').insert(options.map(o => ({ order_id: req.params.id, name: o.name, price: o.price })));
   }
+
+  try {
+    const ctx = await fetchOrderContext({ member_id: req.user.id, office_id: req.user.office_id, product_id });
+    await notifyOrderEdit({
+      ...ctx, actorName: ctx.memberName,
+      quantity, deliveryDate: delivery_date,
+      note: note || '', totalPrice: total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
   res.json(data);
 });
 
@@ -265,6 +291,16 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   await supabase.from('order_options').delete().eq('order_id', req.params.id);
   const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
+
+  try {
+    const ctx = await fetchOrderContext({ member_id: existing.member_id, office_id: existing.office_id, product_id: existing.product_id });
+    await notifyOrderCancel({
+      ...ctx, actorName: ctx.memberName,
+      quantity: existing.quantity, deliveryDate: existing.delivery_date,
+      totalPrice: existing.total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
   res.json({ ok: true });
 });
 
@@ -278,6 +314,24 @@ router.get('/admin', adminMiddleware, async (req, res) => {
   if (office_id) query = query.eq('office_id', office_id);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// 受領確認（注文者本人）
+// 配達済（is_delivered=true）の注文に対してのみ実行可能
+router.patch('/:id/receive', authMiddleware, async (req, res) => {
+  const { data: order } = await supabase.from('orders')
+    .select('id, member_id, is_delivered, received_at')
+    .eq('id', req.params.id).single();
+  if (!order) return res.status(404).json({ error: '注文が見つかりません' });
+  if (order.member_id !== req.user.id) return res.status(403).json({ error: 'この注文を受領する権限がありません' });
+  if (!order.is_delivered) return res.status(400).json({ error: 'まだ配達されていません' });
+  if (order.received_at) return res.json(order); // すでに受領済みなら冪等
+
+  const { data, error } = await supabase.from('orders')
+    .update({ received_at: new Date().toISOString() })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
 
@@ -331,18 +385,38 @@ router.put('/admin/:id', adminMiddleware, async (req, res) => {
   if (options && options.length > 0) {
     await supabase.from('order_options').insert(options.map(o => ({ order_id: req.params.id, name: o.name, price: o.price })));
   }
+
+  try {
+    const ctx = await fetchOrderContext({ member_id: existing.member_id, office_id: existing.office_id, product_id });
+    await notifyOrderEdit({
+      ...ctx, actorName: '管理者',
+      quantity, deliveryDate: delivery_date,
+      note: note || '', totalPrice: total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
   res.json(data);
 });
 
 // 注文削除（管理者・締切無視）
 router.delete('/admin/:id', adminMiddleware, async (req, res) => {
   const { data: existing } = await supabase.from('orders')
-    .select('id').eq('id', req.params.id).single();
+    .select('*').eq('id', req.params.id).single();
   if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
 
   await supabase.from('order_options').delete().eq('order_id', req.params.id);
   const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
+
+  try {
+    const ctx = await fetchOrderContext({ member_id: existing.member_id, office_id: existing.office_id, product_id: existing.product_id });
+    await notifyOrderCancel({
+      ...ctx, actorName: '管理者',
+      quantity: existing.quantity, deliveryDate: existing.delivery_date,
+      totalPrice: existing.total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
   res.json({ ok: true });
 });
 
@@ -448,6 +522,17 @@ router.delete('/office-admin/:id', officeAdminMiddleware, async (req, res) => {
   await supabase.from('order_options').delete().eq('order_id', req.params.id);
   const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
+
+  try {
+    const ctx = await fetchOrderContext({ member_id: existing.member_id, office_id: existing.office_id, product_id: existing.product_id });
+    const { data: actor } = await supabase.from('members').select('name').eq('id', req.user.id).single();
+    await notifyOrderCancel({
+      ...ctx, actorName: `${actor?.name || '担当者'}(代理)`,
+      quantity: existing.quantity, deliveryDate: existing.delivery_date,
+      totalPrice: existing.total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
   res.json({ ok: true });
 });
 

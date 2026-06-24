@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
+import { todayJST } from '../../utils/date';
 
 export default function OfficeAdminPrintPage() {
   const [orders, setOrders] = useState([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
 
   useEffect(() => {
     const q = new URLSearchParams({ date });

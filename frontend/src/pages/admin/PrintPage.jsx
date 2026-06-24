@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
+import { todayJST } from '../../utils/date';
 
 export default function PrintPage() {
   const [orders, setOrders] = useState([]);
   const [offices, setOffices] = useState([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
   const [officeId, setOfficeId] = useState('');
 
   useEffect(() => { api.get('/offices').then(setOffices); }, []);

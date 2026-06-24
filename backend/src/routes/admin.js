@@ -3,7 +3,9 @@ const supabase = require('../utils/supabase');
 const { adminMiddleware } = require('../middleware/auth');
 
 router.get('/stats', adminMiddleware, async (_req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  // JST基準の「今日」（サーバーTZに依存しない）
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const today = jst.toISOString().split('T')[0];
   const [{ count: todayOrders }, { count: members }, { count: offices }] = await Promise.all([
     supabase.from('orders').select('*', { count: 'exact', head: true }).eq('delivery_date', today),
     supabase.from('members').select('*', { count: 'exact', head: true }),
