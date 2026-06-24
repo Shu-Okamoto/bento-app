@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../utils/api';
+import { todayJST } from '../../utils/date';
 
 export default function OfficeAdminOrders() {
   const { slug } = useParams();
   const [orders, setOrders] = useState([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
   const [loading, setLoading] = useState(false);
 
   function reload() {

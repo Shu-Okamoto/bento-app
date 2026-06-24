@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
+import { todayJST } from '../../utils/date';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [offices, setOffices] = useState([]);
   const [products, setProducts] = useState([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
   const [officeId, setOfficeId] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ product_id:'', quantity:1, delivery_date:'', note:'', options:[] });
