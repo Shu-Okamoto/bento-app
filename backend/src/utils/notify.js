@@ -95,4 +95,45 @@ async function notifyNewOrder({ memberName, officeName, productName, quantity, d
   ]);
 }
 
-module.exports = { notifyNewOrder, sendLineNotify, sendEmailNotify };
+// 注文編集通知
+async function notifyOrderEdit({ memberName, officeName, productName, quantity, deliveryDate, note, totalPrice, actorName }) {
+  const msg = [
+    '✏️ 注文が編集されました',
+    '━━━━━━━━━━━━',
+    `事業所：${officeName}`,
+    `注文者：${memberName}`,
+    `編集者：${actorName}`,
+    `商品　：${productName} × ${quantity}個`,
+    `お届け：${deliveryDate}`,
+    `合計　：¥${Number(totalPrice).toLocaleString()}`,
+    note ? `備考　：${note}` : '',
+    '━━━━━━━━━━━━',
+  ].filter(Boolean).join('\n');
+
+  await Promise.all([
+    sendLineNotify(msg),
+    sendEmailNotify('【みかわ弁当】注文が編集されました', msg),
+  ]);
+}
+
+// 注文キャンセル通知
+async function notifyOrderCancel({ memberName, officeName, productName, quantity, deliveryDate, totalPrice, actorName }) {
+  const msg = [
+    '❌ 注文がキャンセルされました',
+    '━━━━━━━━━━━━',
+    `事業所：${officeName}`,
+    `注文者：${memberName}`,
+    `キャンセル：${actorName}`,
+    `商品　：${productName} × ${quantity}個`,
+    `お届け：${deliveryDate}`,
+    `合計　：¥${Number(totalPrice).toLocaleString()}`,
+    '━━━━━━━━━━━━',
+  ].filter(Boolean).join('\n');
+
+  await Promise.all([
+    sendLineNotify(msg),
+    sendEmailNotify('【みかわ弁当】注文がキャンセルされました', msg),
+  ]);
+}
+
+module.exports = { notifyNewOrder, notifyOrderEdit, notifyOrderCancel, sendLineNotify, sendEmailNotify };
