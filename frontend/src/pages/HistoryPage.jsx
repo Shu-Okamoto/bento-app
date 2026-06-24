@@ -68,6 +68,17 @@ export default function HistoryPage() {
     } finally { setLoading(false); }
   }
 
+  async function markReceived(orderId) {
+    setLoading(true);
+    try {
+      const updated = await api.patch(`/orders/${orderId}/receive`);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updated } : o));
+      showToast('受領を確認しました', 'success');
+    } catch(err) {
+      showToast(err.message, 'error');
+    } finally { setLoading(false); }
+  }
+
   async function cancelOrder(orderId) {
     if (!confirm('この注文をキャンセルしますか？')) return;
     setLoading(true);
@@ -117,9 +128,14 @@ export default function HistoryPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                <span className={`badge ${o.is_delivered ? 'badge-green' : 'badge-amber'}`}>
-                  {o.is_delivered ? '配達済' : '配達待ち'}
+                <span className={`badge ${o.received_at ? 'badge-green' : o.is_delivered ? 'badge-amber' : 'badge-amber'}`}>
+                  {o.received_at ? '受領済' : o.is_delivered ? '配達済' : '配達待ち'}
                 </span>
+                {o.is_delivered && !o.received_at && (
+                  <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px', marginTop: 4 }} onClick={() => markReceived(o.id)} disabled={loading}>
+                    受領する
+                  </button>
+                )}
                 {canEdit(o) && editing !== o.id && (
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                     <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => startEdit(o)}>編集</button>
