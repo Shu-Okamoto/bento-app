@@ -35,11 +35,17 @@ router.get('/slug/:slug', async (req, res) => {
 });
 
 // 事業所作成（管理者）
+function normalizeDriverNumber(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return [1, 2, 3].includes(n) ? n : null;
+}
+
 router.post('/', adminMiddleware, async (req, res) => {
   const {
     name, slug, short_name, address, phone, contact_name, email,
     billing_type, deadline_type, deadline_hour, deadline_minute,
-    show_free_products, cart_enabled,
+    show_free_products, cart_enabled, driver_number,
   } = req.body;
   if (!name || !slug) return res.status(400).json({ error: '事業所名とスラグは必須です' });
   const { data, error } = await supabase
@@ -57,6 +63,7 @@ router.post('/', adminMiddleware, async (req, res) => {
       deadline_minute: deadline_minute ?? 0,
       show_free_products: show_free_products || false,
       cart_enabled: cart_enabled || false,
+      driver_number: normalizeDriverNumber(driver_number),
     })
     .select()
     .single();
@@ -69,7 +76,7 @@ router.put('/:id', adminMiddleware, async (req, res) => {
   const {
     name, slug, short_name, address, phone, contact_name, email,
     billing_type, deadline_type, deadline_hour, deadline_minute,
-    show_free_products, cart_enabled,
+    show_free_products, cart_enabled, driver_number,
   } = req.body;
   const { data, error } = await supabase
     .from('offices')
@@ -86,6 +93,7 @@ router.put('/:id', adminMiddleware, async (req, res) => {
       deadline_minute: deadline_minute ?? 0,
       show_free_products: show_free_products || false,
       cart_enabled: cart_enabled || false,
+      driver_number: normalizeDriverNumber(driver_number),
     })
     .eq('id', req.params.id)
     .select()

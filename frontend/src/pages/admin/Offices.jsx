@@ -22,6 +22,7 @@ export default function Offices() {
     deadline_type: 'prev_day', deadline_hour: 15, deadline_minute: 0,
     show_free_products: false,
     cart_enabled: false,
+    driver_number: '',
   });
   const [form, setForm] = useState(getEmptyForm());
 
@@ -45,6 +46,7 @@ export default function Offices() {
       deadline_minute: o.deadline_minute ?? 0,
       show_free_products: o.show_free_products || false,
       cart_enabled: o.cart_enabled || false,
+      driver_number: o.driver_number ?? '',
     });
     setEditing(o.id); setShow(true);
   }
@@ -170,6 +172,22 @@ export default function Offices() {
             </div>
           </div>
 
+          {/* ドライバー割り当て */}
+          <div className="form-group">
+            <label>担当ドライバー</label>
+            <select value={form.driver_number}
+              onChange={e => setForm(f => ({ ...f, driver_number: e.target.value }))}
+              style={{ padding:'8px 12px', border:'1px solid #e0dfd8', borderRadius:8, fontSize:14, background:'white', width:'fit-content' }}>
+              <option value="">未割り当て</option>
+              <option value="1">ドライバー1</option>
+              <option value="2">ドライバー2</option>
+              <option value="3">ドライバー3</option>
+            </select>
+            <div style={{ fontSize:11, color:'#888', marginTop:4 }}>
+              割り当てたドライバー画面（/driver/1〜3）に本日の未配達が表示されます
+            </div>
+          </div>
+
           {/* フリー商品表示設定 */}
           <div className="form-group">
             <label>商品表示設定</label>
@@ -219,6 +237,11 @@ export default function Offices() {
               {o.cart_enabled && (
                 <span style={{ fontSize:11, background:'#E1F5EE', color:'#0F6E56', padding:'2px 8px', borderRadius:99 }}>
                   🛒 カートあり
+                </span>
+              )}
+              {o.driver_number && (
+                <span style={{ fontSize:11, background:'#E9F0FF', color:'#1F4FB3', padding:'2px 8px', borderRadius:99 }}>
+                  🚚 ドライバー{o.driver_number}
                 </span>
               )}
             </div>
