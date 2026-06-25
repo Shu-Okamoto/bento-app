@@ -10,6 +10,7 @@ const NAV = [
   { to: '/admin/announcements', label: 'お知らせ', icon: '📢' },
   { to: '/admin/members',  label: '会員管理',       icon: '👥' },
   { to: '/admin/offices',  label: '事業所管理',     icon: '🏢' },
+  { to: '/admin/driver-tokens', label: 'ドライバーURL', icon: '🚚' },
   { to: '/admin/billing',       label: '請求管理',     icon: '💴' },
   { to: '/admin/billing-print', label: '請求書印刷',   icon: '🧾' },
   { to: '/admin/settings', label: '設定',           icon: '⚙️' },

@@ -1,7 +1,8 @@
 // =============================================
-// ドライバー画面用エンドポイント（認証なし・公開URL）
+// ドライバー画面用エンドポイント（認証なし・トークンURL）
 // =============================================
-// 配達員は /driver/:n （n=1〜3）にアクセスするだけで使える。
+// 配達員は /driver/:token （ランダム文字列）でアクセス。
+// driver_tokens テーブルでトークン→driver_number を解決。
 // 表示対象: 本日（JST）の未配達 かつ offices.driver_number = n
 // =============================================
 const router = require('express').Router();
@@ -11,19 +12,21 @@ function todayJST() {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
 }
 
-function validDriverNumber(n) {
-  const num = Number(n);
-  return [1, 2, 3].includes(num) ? num : null;
+// トークンから driver_number を解決。見つからなければ null。
+async function resolveDriver(token) {
+  if (!token || typeof token !== 'string' || token.length < 8) return null;
+  const { data } = await supabase
+    .from('driver_tokens').select('driver_number').eq('token', token).single();
+  return data?.driver_number ?? null;
 }
 
 // 本日の未配達一覧
-router.get('/:n/orders', async (req, res) => {
-  const n = validDriverNumber(req.params.n);
-  if (!n) return res.status(404).json({ error: 'ドライバー番号が不正です' });
+router.get('/:token/orders', async (req, res) => {
+  const n = await resolveDriver(req.params.token);
+  if (!n) return res.status(404).json({ error: 'URLが無効です' });
 
   const today = todayJST();
 
-  // 該当ドライバーに割り振られた事業所
   const { data: offices } = await supabase
     .from('offices').select('id, name').eq('driver_number', n);
   const officeIds = (offices || []).map(o => o.id);
@@ -41,11 +44,10 @@ router.get('/:n/orders', async (req, res) => {
 });
 
 // 配達完了
-router.patch('/:n/orders/:id/deliver', async (req, res) => {
-  const n = validDriverNumber(req.params.n);
-  if (!n) return res.status(404).json({ error: 'ドライバー番号が不正です' });
+router.patch('/:token/orders/:id/deliver', async (req, res) => {
+  const n = await resolveDriver(req.params.token);
+  if (!n) return res.status(404).json({ error: 'URLが無効です' });
 
-  // 対象注文が本当にこのドライバーの担当事業所のものか検証
   const { data: order } = await supabase.from('orders')
     .select('id, office_id, member_id, total_price, points_earned, is_delivered')
     .eq('id', req.params.id).single();
