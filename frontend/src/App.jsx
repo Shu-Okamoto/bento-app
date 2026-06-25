@@ -22,6 +22,7 @@ import OfficeAdminMembers    from './pages/office-admin/Members';
 import OfficeAdminProxyOrder from './pages/office-admin/ProxyOrder';
 import OfficeAdminBilling    from './pages/office-admin/BillingPrint';
 import OfficeAdminPrint      from './pages/office-admin/PrintPage';
+import DriverPage            from './pages/DriverPage';
 
 import {
   Dashboard as AdminDashboard,
@@ -164,6 +165,9 @@ export default function App() {
         <BrowserRouter>
           <ToastProvider>
             <Routes>
+              {/* ドライバー（公開・認証なし） */}
+              <Route path="/driver/:n" element={<DriverPage />} />
+
               {/* 管理者 */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
