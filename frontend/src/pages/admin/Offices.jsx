@@ -184,7 +184,7 @@ export default function Offices() {
               <option value="3">ドライバー3</option>
             </select>
             <div style={{ fontSize:11, color:'#888', marginTop:4 }}>
-              割り当てたドライバー画面（/driver/1〜3）に本日の未配達が表示されます
+              割り当てたドライバーのURL（「ドライバーURL管理」で発行）に本日の未配達が表示されます
             </div>
           </div>
 

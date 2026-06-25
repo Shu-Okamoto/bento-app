@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 import { todayJST, formatDateJa } from '../utils/date';
 
 export default function DriverPage() {
-  const { n } = useParams();
+  const { token } = useParams();
   const { showToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,19 +14,19 @@ export default function DriverPage() {
   async function reload() {
     setLoading(true);
     try {
-      const data = await api.get(`/driver/${n}/orders`);
+      const data = await api.get(`/driver/${token}/orders`);
       setOrders(data);
       setError(null);
     } catch(e) { setError(e.message); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { reload(); }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { reload(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function deliver(id) {
     if (!confirm('配達完了にしますか？')) return;
     try {
-      await api.patch(`/driver/${n}/orders/${id}/deliver`);
+      await api.patch(`/driver/${token}/orders/${id}/deliver`);
       setOrders(prev => prev.filter(o => o.id !== id));
       showToast('配達完了にしました', 'success');
     } catch(e) {
@@ -34,15 +34,11 @@ export default function DriverPage() {
     }
   }
 
-  if (!['1','2','3'].includes(n)) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>不正なドライバー番号です</div>;
-  }
-
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '20px 16px' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>🚚 ドライバー{n} 配達リスト</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>🚚 配達リスト</h1>
           <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
             {formatDateJa(todayJST())} の未配達 {orders.length} 件
           </div>

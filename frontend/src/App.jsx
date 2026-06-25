@@ -34,7 +34,8 @@ import {
   Settings  as AdminSettings,
   PrintPage,
   BillingPrintPage,
-  Announcements
+  Announcements,
+  DriverTokens
 } from './pages/admin/index.js';
 
 // Cookie操作ユーティリティ
@@ -166,7 +167,7 @@ export default function App() {
           <ToastProvider>
             <Routes>
               {/* ドライバー（公開・認証なし） */}
-              <Route path="/driver/:n" element={<DriverPage />} />
+              <Route path="/driver/:token" element={<DriverPage />} />
 
               {/* 管理者 */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -177,6 +178,7 @@ export default function App() {
                 <Route path="announcements" element={<Announcements />} />
                 <Route path="members"     element={<AdminMembers />} />
                 <Route path="offices"     element={<AdminOffices />} />
+                <Route path="driver-tokens" element={<DriverTokens />} />
                 <Route path="billing"     element={<AdminBilling />} />
                 <Route path="settings"    element={<AdminSettings />} />
                 <Route path="print"       element={<PrintPage />} />
