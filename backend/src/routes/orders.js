@@ -547,7 +547,7 @@ router.get('/office-admin/billing', officeAdminMiddleware, async (req, res) => {
   const nextM = m === 12 ? 1 : m + 1;
   const to   = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
   const { data, error } = await supabase.from('orders')
-    .select('total_price, delivery_date, members(name, department), offices(name), order_options(name, price), products(name)')
+    .select('total_price, quantity, delivery_date, note, members(name, department), offices(name), order_options(name, price), products(name)')
     .eq('office_id', req.user.office_id)
     .eq('is_delivered', true)
     .gte('delivery_date', from).lt('delivery_date', to);
@@ -564,7 +564,7 @@ router.get('/billing', adminMiddleware, async (req, res) => {
   const nextM = m === 12 ? 1 : m + 1;
   const to   = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
   let query = supabase.from('orders')
-    .select('total_price, delivery_date, members(name, department), offices(name), order_options(name, price), products(name)')
+    .select('total_price, quantity, delivery_date, note, members(name, department), offices(name), order_options(name, price), products(name)')
     .eq('is_delivered', true)
     .gte('delivery_date', from).lt('delivery_date', to);
   if (office_id) query = query.eq('office_id', office_id);
