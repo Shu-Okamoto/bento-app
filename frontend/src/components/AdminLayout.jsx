@@ -121,7 +121,7 @@ export default function AdminLayout() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
         {/* トップバー（スマホのみハンバーガー表示） */}
-        <header style={{
+        <header className="no-print" style={{
           background: 'white',
           borderBottom: '1px solid #e0dfd8',
           padding: '12px 16px',
