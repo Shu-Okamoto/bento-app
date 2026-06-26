@@ -540,12 +540,17 @@ router.delete('/office-admin/:id', officeAdminMiddleware, async (req, res) => {
 router.get('/office-admin/billing', officeAdminMiddleware, async (req, res) => {
   const { year, month } = req.query;
   if (!year || !month) return res.status(400).json({ error: '年月を指定してください' });
-  const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to   = `${year}-${String(month).padStart(2, '0')}-31`;
+  const y = Number(year), m = Number(month);
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  // 翌月1日を上限（未満比較）にして月末日数の差異を吸収
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const to   = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
   const { data, error } = await supabase.from('orders')
     .select('total_price, delivery_date, members(name, department), offices(name), order_options(name, price), products(name)')
     .eq('office_id', req.user.office_id)
-    .gte('delivery_date', from).lte('delivery_date', to);
+    .eq('is_delivered', true)
+    .gte('delivery_date', from).lt('delivery_date', to);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -553,11 +558,15 @@ router.get('/office-admin/billing', officeAdminMiddleware, async (req, res) => {
 // 月次集計（請求）
 router.get('/billing', adminMiddleware, async (req, res) => {
   const { year, month, office_id } = req.query;
-  const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to   = `${year}-${String(month).padStart(2, '0')}-31`;
+  const y = Number(year), m = Number(month);
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const to   = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
   let query = supabase.from('orders')
     .select('total_price, delivery_date, members(name, department), offices(name), order_options(name, price), products(name)')
-    .gte('delivery_date', from).lte('delivery_date', to);
+    .eq('is_delivered', true)
+    .gte('delivery_date', from).lt('delivery_date', to);
   if (office_id) query = query.eq('office_id', office_id);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
