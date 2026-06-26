@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const crypto = require('crypto');
 const supabase = require('../utils/supabase');
-const { adminMiddleware } = require('../middleware/auth');
+const { adminMiddleware, officeAdminMiddleware } = require('../middleware/auth');
 
 router.get('/stats', adminMiddleware, async (_req, res) => {
   // JST基準の「今日」（サーバーTZに依存しない）
@@ -15,6 +15,35 @@ router.get('/stats', adminMiddleware, async (_req, res) => {
   const { data: revenue } = await supabase.from('orders').select('total_price').eq('delivery_date', today);
   const todayRevenue = (revenue || []).reduce((s, r) => s + r.total_price, 0);
   res.json({ todayOrders, members, offices, todayRevenue });
+});
+
+// 自社情報（請求書印刷の請求元用）
+router.get('/company-info', adminMiddleware, async (_req, res) => {
+  const { data, error } = await supabase.from('company_info').select('*').eq('id', 1).single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || {});
+});
+
+router.put('/company-info', adminMiddleware, async (req, res) => {
+  const { company_name, address, invoice_number, bank_info } = req.body;
+  const { data, error } = await supabase.from('company_info')
+    .update({
+      company_name: company_name || null,
+      address: address || null,
+      invoice_number: invoice_number || null,
+      bank_info: bank_info || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', 1).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+// 事業所担当者用（請求書印刷で参照のみ）
+router.get('/company-info/public', officeAdminMiddleware, async (_req, res) => {
+  const { data, error } = await supabase.from('company_info').select('*').eq('id', 1).single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || {});
 });
 
 // ドライバートークン一覧

@@ -536,6 +536,8 @@ export function Settings() {
   const [notifySaved, setNotifySaved] = useState(false);
   const [points, setPoints] = useState({ rate_normal: 1, rate_campaign: 3, campaign_active: false });
   const [pointsSaved, setPointsSaved] = useState(false);
+  const [company, setCompany] = useState({ company_name:'', address:'', invoice_number:'', bank_info:'' });
+  const [companySaved, setCompanySaved] = useState(false);
 
   useEffect(() => {
     api.get('/holidays').then(setSettings);
@@ -550,7 +552,18 @@ export function Settings() {
       rate_campaign: d.rate_campaign ?? 3,
       campaign_active: !!d.campaign_active,
     })).catch(()=>{});
+    api.get('/admin/company-info').then(d => setCompany({
+      company_name: d.company_name || '',
+      address: d.address || '',
+      invoice_number: d.invoice_number || '',
+      bank_info: d.bank_info || '',
+    })).catch(()=>{});
   }, []);
+
+  async function saveCompany() {
+    await api.put('/admin/company-info', company);
+    setCompanySaved(true); setTimeout(() => setCompanySaved(false), 2000);
+  }
 
   async function save() {
     await api.put('/holidays', settings);
@@ -580,6 +593,32 @@ export function Settings() {
   return (
     <div>
       <h1 style={{ fontSize:20, fontWeight:700, marginBottom:20 }}>設定</h1>
+
+      {/* 自社情報（請求書印刷用） */}
+      <div className="card" style={{ maxWidth:560, marginBottom:16 }}>
+        <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>🏢 自社情報（請求書の請求元）</h2>
+        <div className="form-group">
+          <label>会社名</label>
+          <input value={company.company_name} onChange={e=>setCompany(c=>({...c,company_name:e.target.value}))} type="text" placeholder="例: 株式会社 里の味みかわ" />
+        </div>
+        <div className="form-group">
+          <label>住所</label>
+          <input value={company.address} onChange={e=>setCompany(c=>({...c,address:e.target.value}))} type="text" placeholder="例: 〒000-0000 ○○県○○市..." />
+        </div>
+        <div className="form-group">
+          <label>適格請求書発行事業者登録番号</label>
+          <input value={company.invoice_number} onChange={e=>setCompany(c=>({...c,invoice_number:e.target.value}))} type="text" placeholder="例: T1234567890123" />
+        </div>
+        <div className="form-group" style={{ marginBottom:14 }}>
+          <label>振込先口座情報</label>
+          <textarea value={company.bank_info} onChange={e=>setCompany(c=>({...c,bank_info:e.target.value}))}
+            rows={3} placeholder="例: ○○銀行 ○○支店 普通 1234567 リ)サトノアジミカワ"
+            style={{ padding:'9px 12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', outline:'none', resize:'vertical', fontSize:14, width:'100%', fontFamily:'inherit' }} />
+        </div>
+        <button className="btn btn-primary" onClick={saveCompany}>
+          {companySaved ? '✓ 保存しました' : '自社情報を保存'}
+        </button>
+      </div>
 
       {/* 通知設定 */}
       <div className="card" style={{ maxWidth:560, marginBottom:16 }}>

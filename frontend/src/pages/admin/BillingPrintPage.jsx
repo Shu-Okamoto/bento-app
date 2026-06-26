@@ -9,9 +9,11 @@ export default function BillingPrintPage() {
   const [officeId, setOfficeId] = useState('');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [company, setCompany] = useState({});
 
   useEffect(() => {
     api.get('/offices').then(setOffices);
+    api.get('/admin/company-info').then(setCompany).catch(()=>{});
   }, []);
 
   async function load() {
@@ -23,10 +25,10 @@ export default function BillingPrintPage() {
     } finally { setLoading(false); }
   }
 
-  // 事業所ごとにグループ化
+  // 事業所ごとにグループ化（名前 + 住所も保持）
   const byOffice = data.reduce((acc, o) => {
     const key = o.offices?.name || '不明';
-    if (!acc[key]) acc[key] = { name: key, orders: [] };
+    if (!acc[key]) acc[key] = { name: key, address: o.offices?.address || '', orders: [] };
     acc[key].orders.push(o);
     return acc;
   }, {});
@@ -96,14 +98,25 @@ export default function BillingPrintPage() {
             pageBreakAfter: idx < officeList.length - 1 ? 'always' : 'auto',
           }}>
             {/* ヘッダー */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, borderBottom: '2px solid #1a1a1a', paddingBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>里の味みかわ</div>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{year}年{month}月分　弁当注文集計</div>
-                <div style={{ fontSize: 14, color: '#444', marginTop: 4 }}>{office.name} 御中</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, borderBottom: '2px solid #1a1a1a', paddingBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>{office.name} 御中</div>
+                {office.address && (
+                  <div style={{ fontSize: 12, color: '#555', marginTop: 6 }}>{office.address}</div>
+                )}
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 14 }}>{year}年{month}月分　弁当注文集計</div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <img src="/logo.JPG" alt="みかわ" style={{ height: 48, objectFit: 'contain' }} />
+              <div style={{ textAlign: 'right', minWidth: 220 }}>
+                <img src="/logo.JPG" alt="みかわ" style={{ height: 40, objectFit: 'contain', marginBottom: 6 }} />
+                {company.company_name && (
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{company.company_name}</div>
+                )}
+                {company.address && (
+                  <div style={{ fontSize: 11, color: '#444', marginTop: 2, whiteSpace: 'pre-wrap' }}>{company.address}</div>
+                )}
+                {company.invoice_number && (
+                  <div style={{ fontSize: 11, color: '#444', marginTop: 2 }}>登録番号：{company.invoice_number}</div>
+                )}
               </div>
             </div>
 
@@ -181,9 +194,17 @@ export default function BillingPrintPage() {
               </table>
             </div>
 
+            {/* 振込先 */}
+            {company.bank_info && (
+              <div style={{ marginTop: 20, padding: '10px 14px', background: '#f5f4f0', border: '1px solid #e0dfd8', borderRadius: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#555', marginBottom: 4 }}>■ 振込先口座</div>
+                <div style={{ fontSize: 12, color: '#222', whiteSpace: 'pre-wrap' }}>{company.bank_info}</div>
+              </div>
+            )}
+
             {/* フッター */}
-            <div style={{ marginTop: 24, paddingTop: 14, borderTop: '1px solid #e0dfd8', fontSize: 12, color: '#888', display: 'flex', justifyContent: 'space-between' }}>
-              <span>里の味みかわ</span>
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #e0dfd8', fontSize: 11, color: '#888', display: 'flex', justifyContent: 'space-between' }}>
+              <span>{company.company_name || '里の味みかわ'}</span>
               <span>発行日：{new Date().toLocaleDateString('ja-JP')}</span>
             </div>
           </div>
