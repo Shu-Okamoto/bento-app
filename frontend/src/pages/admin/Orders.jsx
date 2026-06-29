@@ -27,6 +27,12 @@ export default function AdminOrders() {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, is_delivered: true } : o));
   }
 
+  async function setDriver(id, value) {
+    const driver_number = value === '' ? null : Number(value);
+    const updated = await api.patch(`/orders/admin/${id}/driver`, { driver_number });
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, driver_number: updated.driver_number } : o));
+  }
+
   function startEdit(o) {
     setEditing(o.id);
     setForm({
@@ -154,7 +160,7 @@ export default function AdminOrders() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f5f4f0' }}>
-              {['事業所','所属','氏名','商品','オプション','備考','個数','金額','状態','操作'].map(h => (
+              {['事業所','所属','氏名','商品','オプション','備考','個数','金額','ドライバー','状態','操作'].map(h => (
                 <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#555', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -177,6 +183,20 @@ export default function AdminOrders() {
                 <td style={{ padding: '10px 12px', color: '#854F0B', fontSize: 12, maxWidth: 180 }}>{o.note || '—'}</td>
                 <td style={{ padding: '10px 12px' }}>{o.quantity}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500 }}>¥{o.total_price?.toLocaleString()}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  {o.offices?.slug === 'free' ? (
+                    <select value={o.driver_number ?? ''} onChange={e => setDriver(o.id, e.target.value)}
+                      disabled={o.is_delivered}
+                      style={{ padding: '4px 8px', fontSize: 12, border: '1px solid #e0dfd8', borderRadius: 6 }}>
+                      <option value="">未指定</option>
+                      <option value="1">ドライバー1</option>
+                      <option value="2">ドライバー2</option>
+                      <option value="3">ドライバー3</option>
+                    </select>
+                  ) : (
+                    <span style={{ fontSize: 12, color: '#888' }}>事業所設定</span>
+                  )}
+                </td>
                 <td style={{ padding: '10px 12px' }}>
                   <span className={`badge ${o.is_delivered ? 'badge-green' : 'badge-amber'}`}>
                     {o.is_delivered ? '配達済' : '未配達'}

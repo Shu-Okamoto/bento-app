@@ -308,7 +308,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 router.get('/admin', adminMiddleware, async (req, res) => {
   const { date, office_id } = req.query;
   let query = supabase.from('orders')
-    .select('*, members(name, department, phone), products(name), order_options(name, price), offices(name)')
+    .select('*, members(name, department, phone), products(name), order_options(name, price), offices(name, slug)')
     .order('delivery_date', { ascending: false });
   if (date) query = query.eq('delivery_date', date);
   if (office_id) query = query.eq('office_id', office_id);
@@ -359,6 +359,21 @@ router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
   const { data, error } = await supabase.from('orders')
     .update({ is_delivered: true, delivered_at: new Date().toISOString(), points_earned: earned || order.points_earned || 0 })
     .eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+// 注文単位のドライバー割り当て（管理者）
+// driver_number: 1〜3 または null（未割り当て）
+router.patch('/admin/:id/driver', adminMiddleware, async (req, res) => {
+  const { driver_number } = req.body;
+  let n = null;
+  if (driver_number !== null && driver_number !== '' && driver_number !== undefined) {
+    n = Number(driver_number);
+    if (![1, 2, 3].includes(n)) return res.status(400).json({ error: 'ドライバー番号は1〜3または未指定です' });
+  }
+  const { data, error } = await supabase.from('orders')
+    .update({ driver_number: n }).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
