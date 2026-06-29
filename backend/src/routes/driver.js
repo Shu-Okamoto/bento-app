@@ -21,26 +21,41 @@ async function resolveDriver(token) {
 }
 
 // 本日の未配達一覧
+// 対象になるのは以下のどちらかを満たす本日・未配達の注文:
+//   (A) orders.driver_number = n （注文単位で明示指定されたもの）
+//   (B) orders.driver_number is null かつ offices.driver_number = n （事業所単位の既定）
 router.get('/:token/orders', async (req, res) => {
   const n = await resolveDriver(req.params.token);
   if (!n) return res.status(404).json({ error: 'URLが無効です' });
 
   const today = todayJST();
+  const select = 'id, quantity, delivery_date, note, is_delivered, driver_number, members(name, department, phone), products(name), order_options(name), offices(name)';
 
+  // (A) 注文単位で指定されたもの
+  const { data: explicit, error: e1 } = await supabase
+    .from('orders').select(select)
+    .eq('delivery_date', today).eq('is_delivered', false).eq('driver_number', n);
+  if (e1) return res.status(500).json({ error: e1.message });
+
+  // (B) 事業所単位の既定（注文側は未指定）
   const { data: offices } = await supabase
-    .from('offices').select('id, name').eq('driver_number', n);
+    .from('offices').select('id').eq('driver_number', n);
   const officeIds = (offices || []).map(o => o.id);
-  if (officeIds.length === 0) return res.json([]);
+  let implicit = [];
+  if (officeIds.length > 0) {
+    const { data, error: e2 } = await supabase
+      .from('orders').select(select)
+      .eq('delivery_date', today).eq('is_delivered', false)
+      .is('driver_number', null)
+      .in('office_id', officeIds);
+    if (e2) return res.status(500).json({ error: e2.message });
+    implicit = data || [];
+  }
 
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id, quantity, delivery_date, note, is_delivered, members(name, department, phone), products(name), order_options(name), offices(name)')
-    .eq('delivery_date', today)
-    .eq('is_delivered', false)
-    .in('office_id', officeIds)
-    .order('office_id', { ascending: true });
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data || []);
+  // マージして事業所ごとに並べ替え
+  const merged = [...(explicit || []), ...implicit];
+  merged.sort((a, b) => (a.offices?.name || '').localeCompare(b.offices?.name || '', 'ja'));
+  res.json(merged);
 });
 
 // 配達完了
@@ -49,13 +64,18 @@ router.patch('/:token/orders/:id/deliver', async (req, res) => {
   if (!n) return res.status(404).json({ error: 'URLが無効です' });
 
   const { data: order } = await supabase.from('orders')
-    .select('id, office_id, member_id, total_price, points_earned, is_delivered')
+    .select('id, office_id, member_id, total_price, points_earned, is_delivered, driver_number')
     .eq('id', req.params.id).single();
   if (!order) return res.status(404).json({ error: '注文が見つかりません' });
 
-  const { data: office } = await supabase.from('offices')
-    .select('driver_number').eq('id', order.office_id).single();
-  if (!office || office.driver_number !== n) {
+  // 担当判定: 注文単位の指定が優先、未指定なら事業所単位
+  let assignedTo = order.driver_number;
+  if (assignedTo == null) {
+    const { data: office } = await supabase.from('offices')
+      .select('driver_number').eq('id', order.office_id).single();
+    assignedTo = office?.driver_number ?? null;
+  }
+  if (assignedTo !== n) {
     return res.status(403).json({ error: 'この注文はこのドライバーの担当ではありません' });
   }
 
