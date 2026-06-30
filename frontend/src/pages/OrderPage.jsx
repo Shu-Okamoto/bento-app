@@ -231,8 +231,17 @@ export default function OrderPage() {
       showToast(`${selected.name}は${dow}曜日の注文はできません`, 'warn');
       return;
     }
-    if (!deadlineInfo?.allowed) {
-      showToast(deadlineInfo?.reason || 'この日付は注文できません', 'error');
+    // キャッシュではなく送信直前に最新の締切をサーバーで再確認
+    let fresh;
+    try {
+      fresh = await api.get(`/orders/deadline-check?delivery_date=${date}`);
+      setDeadlineInfo(fresh);
+    } catch {
+      showToast('締切の確認に失敗しました', 'error');
+      return;
+    }
+    if (!fresh.allowed) {
+      showToast(fresh.reason || 'この日付は注文できません', 'error');
       return;
     }
     submittingRef.current = true;
