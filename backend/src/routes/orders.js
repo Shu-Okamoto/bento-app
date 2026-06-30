@@ -363,6 +363,58 @@ router.patch('/:id/deliver', adminMiddleware, async (req, res) => {
   res.json(data);
 });
 
+// スーパー代理注文（管理者・締切無視・全事業所対象）
+router.post('/admin/proxy', adminMiddleware, async (req, res) => {
+  const { member_id, product_id, quantity, delivery_date, options, note, payment_method, proxy_reason } = req.body;
+  if (!member_id || !product_id || !delivery_date) {
+    return res.status(400).json({ error: '会員・商品・配達日は必須です' });
+  }
+  if (!proxy_reason || !proxy_reason.trim()) {
+    return res.status(400).json({ error: '代理理由を入力してください' });
+  }
+
+  const { data: member } = await supabase.from('members')
+    .select('id, office_id, name').eq('id', member_id).single();
+  if (!member) return res.status(404).json({ error: '会員が見つかりません' });
+
+  const { data: product } = await supabase.from('products').select('price, name').eq('id', product_id).single();
+  if (!product) return res.status(404).json({ error: '商品が見つかりません' });
+
+  const optTotal = (options || []).reduce((s, o) => s + (o.price || 0), 0);
+  const total_price = (product.price + optTotal) * Number(quantity || 1);
+
+  const { data: order, error } = await supabase.from('orders')
+    .insert({
+      member_id, office_id: member.office_id, product_id,
+      quantity: Number(quantity || 1), delivery_date,
+      total_price, is_delivered: false, note: note || null,
+      payment_method: payment_method || 'cash',
+      proxied_by_admin_id: req.user.id,
+      proxy_reason: proxy_reason.trim(),
+    })
+    .select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  if (options && options.length > 0) {
+    await supabase.from('order_options').insert(options.map(o => ({ order_id: order.id, name: o.name, price: o.price })));
+  }
+
+  try {
+    const { data: office } = await supabase.from('offices').select('name').eq('id', member.office_id).single();
+    await notifyNewOrder({
+      memberName: `${member.name}(管理者代理: ${req.user.email || '管理者'})`,
+      officeName: office?.name || '不明',
+      productName: product.name,
+      quantity: Number(quantity || 1),
+      deliveryDate: delivery_date,
+      note: note || `[代理理由] ${proxy_reason}`,
+      totalPrice: total_price,
+    });
+  } catch(e) { console.error('Notify error:', e); }
+
+  res.json(order);
+});
+
 // 注文単位のドライバー割り当て（管理者）
 // driver_number: 1〜3 または null（未割り当て）
 router.patch('/admin/:id/driver', adminMiddleware, async (req, res) => {

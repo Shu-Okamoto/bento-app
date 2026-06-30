@@ -35,7 +35,8 @@ import {
   PrintPage,
   BillingPrintPage,
   Announcements,
-  DriverTokens
+  DriverTokens,
+  SuperProxyOrder
 } from './pages/admin/index.js';
 
 // Cookie操作ユーティリティ
@@ -174,6 +175,7 @@ export default function App() {
               <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index              element={<AdminDashboard />} />
                 <Route path="orders"      element={<AdminOrders />} />
+                <Route path="super-proxy" element={<SuperProxyOrder />} />
                 <Route path="products"    element={<AdminProducts />} />
                 <Route path="announcements" element={<Announcements />} />
                 <Route path="members"     element={<AdminMembers />} />

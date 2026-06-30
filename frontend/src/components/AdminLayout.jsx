@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const NAV = [
   { to: '/admin',          label: 'ダッシュボード', icon: '📊', end: true },
   { to: '/admin/orders',   label: '注文管理',       icon: '🍱' },
+  { to: '/admin/super-proxy', label: 'スーパー代理注文', icon: '🛡' },
   { to: '/admin/print',    label: '注文票印刷',     icon: '🖨️' },
   { to: '/admin/products', label: '商品管理',       icon: '🏷️' },
   { to: '/admin/announcements', label: 'お知らせ', icon: '📢' },
