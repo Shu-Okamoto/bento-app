@@ -177,6 +177,11 @@ export default function AdminOrders() {
                       代理
                     </span>
                   )}
+                  {o.proxied_by_admin_id && (
+                    <span title={o.proxy_reason || ''} style={{ marginLeft: 6, fontSize: 11, color: '#fff', background: '#854F0B', padding: '2px 6px', borderRadius: 4 }}>
+                      🛡 管理者代理
+                    </span>
+                  )}
                 </td>
                 <td style={{ padding: '10px 12px' }}>{o.products?.name}</td>
                 <td style={{ padding: '10px 12px', color: '#888' }}>{o.order_options?.map(x=>x.name).join('・')||'—'}</td>
