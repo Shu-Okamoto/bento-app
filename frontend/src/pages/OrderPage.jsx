@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useOffice } from '../context/OfficeContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../components/Toast';
-import { tomorrowJST, formatDeadlineJa, formatDateJa, getDayOfWeek } from '../utils/date';
+import { todayJST, tomorrowJST, formatDeadlineJa, formatDateJa, getDayOfWeek } from '../utils/date';
 import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const DAY_LABELS = ['日','月','火','水','木','金','土'];
@@ -143,11 +143,12 @@ export default function OrderPage() {
     }
   }
 
+  // 今日から14日分。当日締切設定の事業所でも当日を選べるようにするため、
+  // 今日を先頭に含める。実際に選択可能かは締切チェックが判定する。
   function getNext14Days() {
     const dates = [];
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    jst.setUTCDate(jst.getUTCDate() + 1);
     for (let i = 0; i < 14; i++) {
       dates.push(jst.toISOString().split('T')[0]);
       jst.setUTCDate(jst.getUTCDate() + 1);
@@ -316,7 +317,7 @@ export default function OrderPage() {
           </div>
 
           {!multiDateMode ? (
-            <input type="date" value={date} onChange={e => { setDate(e.target.value); if(user) checkDeadline(e.target.value, true); }} min={tomorrowJST()}
+            <input type="date" value={date} onChange={e => { setDate(e.target.value); if(user) checkDeadline(e.target.value, true); }} min={todayJST()}
               style={{ width:'100%', padding:'12px', border:'1px solid #e0dfd8', borderRadius:8, background:'white', fontSize:16, boxSizing:'border-box' }} />
           ) : (
             <div>
