@@ -27,7 +27,7 @@ router.get('/:id', async (req, res) => {
 router.get('/slug/:slug', async (req, res) => {
   const { data, error } = await supabase
     .from('offices')
-    .select('id, name, slug, short_name')
+    .select('id, name, slug, short_name, deadline_type')
     .eq('slug', req.params.slug)
     .single();
   if (error) return res.status(404).json({ error: '事業所が見つかりません' });

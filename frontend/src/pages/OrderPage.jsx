@@ -89,6 +89,14 @@ export default function OrderPage() {
   useEffect(() => { loadProducts(); }, []);
   useEffect(() => { if (date && user && !multiDateMode) checkDeadline(date, true); }, [date, user, multiDateMode]);
 
+  // 事業所が「当日締切」設定ならデフォルト日を今日に切り替え
+  useEffect(() => {
+    if (!slug || slug === 'free') return;
+    api.get(`/offices/slug/${slug}`).then(o => {
+      if (o?.deadline_type === 'same_day') setDate(todayJST());
+    }).catch(() => {});
+  }, [slug]);
+
   // 配達日に対応するおかず情報を取得（事業所スラッグで参照テーブル切替）
   useEffect(() => {
     if (multiDateMode || !date) { setMenusByCategory({}); return; }
