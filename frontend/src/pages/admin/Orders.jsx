@@ -65,10 +65,22 @@ export default function AdminOrders() {
   }
 
   async function del(o) {
-    if (!confirm(`${o.members?.name} さんの ${o.products?.name} (${o.delivery_date}) を削除しますか？`)) return;
+    const paid = o.payment_status === 'paid';
+    const warning = paid
+      ? `\n\n⚠ この注文はカード決済済み（¥${o.total_price?.toLocaleString()}）です。\n削除してもShopify側の入金は残るため、別途返金処理が必要です。`
+      : '';
+    if (!confirm(`${o.members?.name} さんの ${o.products?.name} (${o.delivery_date}) を削除しますか？${warning}`)) return;
     try {
-      await api.delete(`/orders/admin/${o.id}`);
+      const result = await api.delete(`/orders/admin/${o.id}`);
       setOrders(prev => prev.filter(x => x.id !== o.id));
+      if (result?.refund_required) {
+        const url = result.shopify_admin_url;
+        if (url && confirm(`${result.message}\n\nShopify管理画面を開きますか？`)) {
+          window.open(url, '_blank', 'noopener');
+        } else if (!url) {
+          alert(result.message);
+        }
+      }
     } catch (e) {
       alert(e.message);
     }
@@ -160,7 +172,7 @@ export default function AdminOrders() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f5f4f0' }}>
-              {['事業所','所属','氏名','商品','オプション','備考','個数','金額','ドライバー','状態','操作'].map(h => (
+              {['事業所','所属','氏名','商品','オプション','備考','個数','金額','支払','ドライバー','状態','操作'].map(h => (
                 <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#555', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -188,6 +200,24 @@ export default function AdminOrders() {
                 <td style={{ padding: '10px 12px', color: '#854F0B', fontSize: 12, maxWidth: 180 }}>{o.note || '—'}</td>
                 <td style={{ padding: '10px 12px' }}>{o.quantity}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500 }}>¥{o.total_price?.toLocaleString()}</td>
+                <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                  {o.payment_status === 'paid' ? (
+                    o.shopify_admin_url ? (
+                      // 返金が必要になったときのためにShopifyの注文へ直接飛べるようにする
+                      <a href={o.shopify_admin_url} target="_blank" rel="noopener noreferrer"
+                        title="Shopifyの注文を開く"
+                        style={{ fontSize: 11, color: '#0F6E56', background: '#E1F5EE', border: '1px solid #9FE1CB', padding: '2px 6px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>
+                        💳 支払済 ↗
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#0F6E56', background: '#E1F5EE', border: '1px solid #9FE1CB', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                        💳 支払済
+                      </span>
+                    )
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#888' }}>現金</span>
+                  )}
+                </td>
                 <td style={{ padding: '10px 12px' }}>
                   {o.offices?.slug === 'free' ? (
                     <select value={o.driver_number ?? ''} onChange={e => setDriver(o.id, e.target.value)}

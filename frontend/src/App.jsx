@@ -14,6 +14,7 @@ import OrderPage         from './pages/OrderPage';
 import HistoryPage       from './pages/HistoryPage';
 import ProfilePage       from './pages/ProfilePage';
 import ContactPage       from './pages/ContactPage';
+import PaymentPage       from './pages/PaymentPage';
 import MemberLayout       from './components/MemberLayout';
 import AdminLayout        from './components/AdminLayout';
 import OfficeAdminLayout  from './components/OfficeAdminLayout';
@@ -199,6 +200,8 @@ export default function App() {
                   <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
+                {/* 決済中は下部ナビを出さず、支払いに集中できる画面にする */}
+                <Route path="payment/:token" element={<MemberRoute><PaymentPage /></MemberRoute>} />
                 <Route index element={<Navigate to="/free/home" replace />} />
               </Route>
 
