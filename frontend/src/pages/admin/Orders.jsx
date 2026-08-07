@@ -214,8 +214,11 @@ export default function AdminOrders() {
                         💳 支払済
                       </span>
                     )
-                  ) : (
+                  ) : o.offices?.slug === 'free' ? (
                     <span style={{ fontSize: 11, color: '#888' }}>現金</span>
+                  ) : (
+                    // 事業所会員は月次請求のため、支払方法の欄は使わない
+                    <span style={{ fontSize: 11, color: '#bbb' }}>—</span>
                   )}
                 </td>
                 <td style={{ padding: '10px 12px' }}>
