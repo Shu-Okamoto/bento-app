@@ -538,6 +538,12 @@ export function Settings() {
   const [pointsSaved, setPointsSaved] = useState(false);
   const [company, setCompany] = useState({ company_name:'', address:'', invoice_number:'', bank_info:'' });
   const [companySaved, setCompanySaved] = useState(false);
+  const [payment, setPayment] = useState({
+    credit_enabled:false, free_min_total:3000,
+    shopify_configured:false, shopify_shop_domain:null, webhook_secret_configured:false,
+  });
+  const [paymentSaved, setPaymentSaved] = useState(false);
+  const [webhookResult, setWebhookResult] = useState(null);
 
   useEffect(() => {
     api.get('/holidays').then(setSettings);
@@ -558,7 +564,33 @@ export function Settings() {
       invoice_number: d.invoice_number || '',
       bank_info: d.bank_info || '',
     })).catch(()=>{});
+    api.get('/payments/admin/settings').then(setPayment).catch(()=>{});
   }, []);
+
+  async function savePayment() {
+    const saved = await api.put('/payments/admin/settings', {
+      credit_enabled: payment.credit_enabled,
+      free_min_total: Number(payment.free_min_total),
+    });
+    setPayment(p => ({ ...p, ...saved }));
+    setPaymentSaved(true); setTimeout(() => setPaymentSaved(false), 2000);
+  }
+
+  async function registerWebhook() {
+    setWebhookResult(null);
+    try {
+      const r = await api.post('/payments/admin/register-webhook', {});
+      const created = (r.results || []).filter(x => x.created).length;
+      setWebhookResult({
+        ok: true,
+        message: created > 0
+          ? `${created}件のWebhookを登録しました（${r.callback_url}）`
+          : `Webhookは登録済みです（${r.callback_url}）`,
+      });
+    } catch (e) {
+      setWebhookResult({ ok: false, message: e.message });
+    }
+  }
 
   async function saveCompany() {
     await api.put('/admin/company-info', company);
@@ -670,6 +702,81 @@ export function Settings() {
         <button className="btn btn-primary" onClick={saveNotify}>
           {notifySaved ? '✓ 保存しました' : '通知設定を保存'}
         </button>
+      </div>
+
+      {/* 決済設定（Shopify） */}
+      <div className="card" style={{ maxWidth:560, marginBottom:16 }}>
+        <h2 style={{ fontSize:15, fontWeight:600, marginBottom:14 }}>💳 決済設定（Shopify連携）</h2>
+        <p style={{ fontSize:13, color:'#666', marginBottom:14 }}>
+          フリー会員がカート確定時にその場でカード決済できるようにします。
+          入金が確認できてから注文が登録されます。
+        </p>
+
+        {/* 接続状態 */}
+        <div style={{ background:'#fafaf8', border:'1px solid #e0dfd8', borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'3px 0' }}>
+            <span style={{ color:'#666' }}>Shopify APIの設定</span>
+            <span style={{ fontWeight:600, color: payment.shopify_configured ? '#0F6E56' : '#c0392b' }}>
+              {payment.shopify_configured ? `✓ ${payment.shopify_shop_domain}` : '未設定'}
+            </span>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'3px 0' }}>
+            <span style={{ color:'#666' }}>Webhook署名シークレット</span>
+            <span style={{ fontWeight:600, color: payment.webhook_secret_configured ? '#0F6E56' : '#c0392b' }}>
+              {payment.webhook_secret_configured ? '✓ 設定済み' : '未設定'}
+            </span>
+          </div>
+        </div>
+
+        {!payment.shopify_configured && (
+          <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#633806', marginBottom:14, lineHeight:1.8 }}>
+            <strong>Renderの環境変数を設定してください：</strong><br/>
+            SHOPIFY_SHOP_DOMAIN（例：xxxx.myshopify.com）<br/>
+            SHOPIFY_ADMIN_TOKEN（カスタムアプリのAdmin APIトークン）<br/>
+            SHOPIFY_WEBHOOK_SECRET（Webhookの署名シークレット）
+          </div>
+        )}
+
+        <label style={{
+          display:'flex', alignItems:'center', gap:10, padding:'10px 12px',
+          background: payment.credit_enabled ? '#E1F5EE' : '#f5f4f0',
+          border:`1px solid ${payment.credit_enabled ? '#9FE1CB' : '#e0dfd8'}`,
+          borderRadius:8, cursor:'pointer', marginBottom:14,
+        }}>
+          <input type="checkbox" checked={!!payment.credit_enabled}
+            onChange={e => setPayment(p => ({ ...p, credit_enabled: e.target.checked }))}
+            style={{ accentColor:'#1D9E75', width:18, height:18 }} />
+          <span style={{ fontSize:14, fontWeight:600 }}>フリー会員のカード決済を有効にする</span>
+        </label>
+
+        <div className="form-group" style={{ marginBottom:14 }}>
+          <label>フリー会員の最低注文金額（円）</label>
+          <input type="number" min={0} step={100} value={payment.free_min_total}
+            onChange={e => setPayment(p => ({ ...p, free_min_total: e.target.value }))} />
+          <div style={{ fontSize:11, color:'#999', marginTop:4 }}>
+            カート画面の「合計◯円以上から」の判定に使われます
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          <button className="btn btn-primary" onClick={savePayment}>
+            {paymentSaved ? '✓ 保存しました' : '決済設定を保存'}
+          </button>
+          <button className="btn btn-secondary" onClick={registerWebhook} disabled={!payment.shopify_configured}>
+            Webhookを登録する
+          </button>
+        </div>
+        {webhookResult && (
+          <div style={{
+            marginTop:10, fontSize:12, padding:'8px 12px', borderRadius:8,
+            background: webhookResult.ok ? '#E1F5EE' : '#fee',
+            border: `1px solid ${webhookResult.ok ? '#9FE1CB' : '#f5c6c6'}`,
+            color: webhookResult.ok ? '#0F6E56' : '#c0392b',
+            wordBreak:'break-all',
+          }}>
+            {webhookResult.message}
+          </div>
+        )}
       </div>
 
       {/* ポイント設定 */}

@@ -2,6 +2,8 @@ const router = require('express').Router();
 const supabase = require('../utils/supabase');
 const { authMiddleware, adminMiddleware, officeAdminMiddleware } = require('../middleware/auth');
 const { notifyNewOrder, notifyOrderEdit, notifyOrderCancel } = require('../utils/notify');
+const { checkDeadline } = require('../utils/deadline');
+const { orderAdminUrl } = require('../utils/shopify');
 
 // 注文情報を通知用にまとめて取得（失敗してもエラーを投げず空オブジェクトを返す）
 async function fetchOrderContext({ member_id, office_id, product_id }) {
@@ -17,146 +19,6 @@ async function fetchOrderContext({ member_id, office_id, product_id }) {
       productName: product?.name || '不明',
     };
   } catch { return { memberName: '不明', officeName: '不明', productName: '不明' }; }
-}
-
-const JP_HOLIDAYS = [
-  '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
-  '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05',
-  '2025-05-06','2025-07-21','2025-08-11','2025-09-15','2025-09-22',
-  '2025-09-23','2025-10-13','2025-11-03','2025-11-23','2025-11-24',
-  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
-  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-07-20',
-  '2026-08-11','2026-09-21','2026-09-22','2026-10-12','2026-11-03','2026-11-23'
-];
-
-async function getHolidaySettings() {
-  const { data } = await supabase.from('holidays').select('*').single();
-  return data || { closed_sat: true, closed_sun: true, closed_hol: true, extra_dates: [] };
-}
-
-function getDayOfWeek(dateStr) {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-}
-
-function isHoliday(dateStr, settings) {
-  const dow = getDayOfWeek(dateStr);
-  if (settings.closed_sun && dow === 0) return true;
-  if (settings.closed_sat && dow === 6) return true;
-  if (settings.closed_hol && JP_HOLIDAYS.includes(dateStr)) return true;
-  if ((settings.extra_dates || []).includes(dateStr)) return true;
-  return false;
-}
-
-function getPrevBizDay(dateStr, settings) {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day));
-  d.setUTCDate(d.getUTCDate() - 1);
-  let prev = d.toISOString().split('T')[0];
-  while (isHoliday(prev, settings)) {
-    const [y, m, dd] = prev.split('-').map(Number);
-    const pd = new Date(Date.UTC(y, m - 1, dd));
-    pd.setUTCDate(pd.getUTCDate() - 1);
-    prev = pd.toISOString().split('T')[0];
-  }
-  return prev;
-}
-
-// 事業所の締切設定を考慮した締切チェック
-async function checkDeadline(delivery_date, office_id) {
-  const settings = await getHolidaySettings();
-
-  if (isHoliday(delivery_date, settings)) {
-    return { allowed: false, reason: '配達日が休日です' };
-  }
-
-  // 事業所の締切設定を取得
-  let deadlineType = 'prev_day';
-  let deadlineHour = 15;
-  let deadlineMinute = 0;
-  let isFreeOffice = false;
-
-  if (office_id) {
-    const { data: office } = await supabase
-      .from('offices').select('slug, deadline_type, deadline_hour, deadline_minute').eq('id', office_id).single();
-    if (office) {
-      if (office.slug === 'free') {
-        isFreeOffice = true; // フリー会員は前仕込日（月火木金）12:00固定
-      } else {
-        deadlineType = office.deadline_type || 'prev_day';
-        deadlineHour = office.deadline_hour ?? 15;
-        deadlineMinute = office.deadline_minute ?? 0;
-      }
-    }
-  }
-
-  // フリー会員: 前仕込日（月火木金のいずれか）12:00 固定
-  // 配達日から1日ずつ遡り、最初に当たる月・火・木・金がその日。
-  if (isFreeOffice) {
-    const PREP_DOW = new Set([1, 2, 4, 5]); // 月=1, 火=2, 木=4, 金=5
-    const [dy, dm, dd] = delivery_date.split('-').map(Number);
-    const dt = new Date(Date.UTC(dy, dm - 1, dd));
-    do {
-      dt.setUTCDate(dt.getUTCDate() - 1);
-    } while (!PREP_DOW.has(dt.getUTCDay()));
-    const py = dt.getUTCFullYear();
-    const pm = dt.getUTCMonth();
-    const pd = dt.getUTCDate();
-    // 12:00 JST = 03:00 UTC
-    const deadline = new Date(Date.UTC(py, pm, pd, 12 - 9, 0, 0));
-    const now = new Date();
-    if (now > deadline) {
-      return { allowed: false, reason: '締切を過ぎています（前仕込日12:00まで）' };
-    }
-    return {
-      allowed: true,
-      deadline: deadline.toISOString(),
-      deadlineLabel: '前仕込日12:00まで',
-    };
-  }
-
-  // 締切なし
-  if (deadlineType === 'none') {
-    return { allowed: true, deadline: null, deadlineLabel: '締切なし' };
-  }
-
-  const now = new Date();
-  const [dy, dm, dd] = delivery_date.split('-').map(Number);
-  let deadline;
-
-  if (deadlineType === 'same_day') {
-    // 当日のdeadlineHour時deadlineMinute分（JST → UTC）
-    deadline = new Date(Date.UTC(dy, dm - 1, dd, deadlineHour - 9, deadlineMinute, 0));
-  } else {
-    // prev_day または prev_day_custom → 前営業日のdeadlineHour時deadlineMinute分
-    // prev_day のデフォルトはhour=15, minute=0
-    const hour = (deadlineType === 'prev_day') ? 15 : deadlineHour;
-    const minute = (deadlineType === 'prev_day') ? 0 : deadlineMinute;
-    const prevDay = getPrevBizDay(delivery_date, settings);
-    const [py, pm, pd] = prevDay.split('-').map(Number);
-    deadline = new Date(Date.UTC(py, pm - 1, pd, hour - 9, minute, 0));
-    deadlineHour = hour;
-    deadlineMinute = minute;
-    const prevDow = ['日','月','火','水','木','金','土'][getDayOfWeek(prevDay)];
-    console.log(`Delivery: ${delivery_date}, PrevBizDay: ${prevDay}(${prevDow}), Deadline(UTC): ${deadline.toISOString()}`);
-  }
-
-  const pad = (n) => String(n).padStart(2, '0');
-  const timeLabel = `${deadlineHour}:${pad(deadlineMinute)}`;
-  if (now > deadline) {
-    const label = deadlineType === 'same_day'
-      ? `当日${timeLabel}`
-      : `前営業日${timeLabel}`;
-    return { allowed: false, reason: `締切を過ぎています（${label}まで）` };
-  }
-
-  return {
-    allowed: true,
-    deadline: deadline.toISOString(),
-    deadlineLabel: deadlineType === 'same_day'
-      ? `当日${timeLabel}まで`
-      : `前営業日${timeLabel}まで`
-  };
 }
 
 // 締切チェックAPI（フロントエンド用）
@@ -185,7 +47,8 @@ router.get('/my', authMiddleware, async (req, res) => {
 
   const enriched = data.map(o => ({
     ...o,
-    cancellable: !o.is_delivered && (deadlineMap[o.delivery_date] || false),
+    // カード決済済みの注文は返金処理が伴うため会員側では変更・取消させない
+    cancellable: !o.is_delivered && o.payment_status !== 'paid' && (deadlineMap[o.delivery_date] || false),
   }));
   res.json(enriched);
 });
@@ -246,6 +109,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
     .select('*').eq('id', req.params.id).eq('member_id', req.user.id).single();
   if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
   if (existing.is_delivered) return res.status(400).json({ error: '配達済みの注文は変更できません' });
+  // カード決済済みの注文は金額が変わると返金・追加請求が必要になるため会員側では変更させない
+  if (existing.payment_status === 'paid') {
+    return res.status(400).json({ error: 'カード決済済みの注文は変更できません。お手数ですが店舗までご連絡ください' });
+  }
 
   const check = await checkDeadline(existing.delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: '締切を過ぎているため変更できません' });
@@ -284,6 +151,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     .select('*').eq('id', req.params.id).eq('member_id', req.user.id).single();
   if (!existing) return res.status(404).json({ error: '注文が見つかりません' });
   if (existing.is_delivered) return res.status(400).json({ error: '配達済みの注文はキャンセルできません' });
+  // 返金はShopify管理画面での操作が必要なため、会員自身では取り消せないようにする
+  if (existing.payment_status === 'paid') {
+    return res.status(400).json({ error: 'カード決済済みの注文はキャンセルできません。お手数ですが店舗までご連絡ください' });
+  }
 
   const check = await checkDeadline(existing.delivery_date, req.user.office_id);
   if (!check.allowed) return res.status(400).json({ error: '締切を過ぎているためキャンセルできません' });
@@ -314,7 +185,11 @@ router.get('/admin', adminMiddleware, async (req, res) => {
   if (office_id) query = query.eq('office_id', office_id);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  // 返金対応のためShopify管理画面への直リンクを添える
+  res.json((data || []).map(o => ({
+    ...o,
+    shopify_admin_url: o.shopify_order_id ? orderAdminUrl(o.shopify_order_id) : null,
+  })));
 });
 
 // 受領確認（注文者本人）
@@ -483,6 +358,18 @@ router.delete('/admin/:id', adminMiddleware, async (req, res) => {
       totalPrice: existing.total_price,
     });
   } catch(e) { console.error('Notify error:', e); }
+
+  // カード決済済みの注文を消してもShopify側の入金は残る。
+  // 返金は管理者がShopify管理画面で行う必要があるため、その旨とURLを返す。
+  if (existing.payment_status === 'paid') {
+    return res.json({
+      ok: true,
+      refund_required: true,
+      refund_amount: existing.total_price,
+      shopify_admin_url: existing.shopify_order_id ? orderAdminUrl(existing.shopify_order_id) : null,
+      message: 'カード決済済みの注文です。Shopify管理画面で返金処理を行ってください',
+    });
+  }
 
   res.json({ ok: true });
 });

@@ -2,6 +2,7 @@ import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import CartModal from './CartModal';
+import PendingPaymentBanner from './PendingPaymentBanner';
 
 export default function MemberLayout() {
   const { user, logout } = useAuth();
@@ -57,6 +58,7 @@ export default function MemberLayout() {
         paddingBottom: 'calc(72px + env(safe-area-inset-bottom))',
         maxWidth: 640, width: '100%', margin: '0 auto'
       }}>
+        {isFree && <PendingPaymentBanner />}
         <Outlet />
       </main>
 

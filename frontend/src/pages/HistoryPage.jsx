@@ -125,6 +125,16 @@ export default function HistoryPage() {
                 )}
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1D9E75', marginTop: 4 }}>
                   ¥{o.total_price?.toLocaleString()}
+                  {o.payment_status === 'paid' ? (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: '#0F6E56', background: '#E1F5EE', border: '1px solid #9FE1CB', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                      💳 支払済
+                    </span>
+                  ) : isFree ? (
+                    // 事業所会員は月次請求のため、支払方法の表記はフリー会員だけに出す
+                    <span style={{ marginLeft: 8, fontSize: 11, color: '#888', fontWeight: 500 }}>
+                      （当日現金払い）
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -143,7 +153,9 @@ export default function HistoryPage() {
                   </div>
                 )}
                 {!canEdit(o) && !o.is_delivered && (
-                  <span style={{ fontSize: 11, color: '#999', marginTop: 4 }}>締切済み</span>
+                  <span style={{ fontSize: 11, color: '#999', marginTop: 4, textAlign: 'right' }}>
+                    {o.payment_status === 'paid' ? '変更は店舗へご連絡ください' : '締切済み'}
+                  </span>
                 )}
               </div>
             </div>

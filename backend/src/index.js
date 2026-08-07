@@ -10,7 +10,10 @@ app.use(cors({
   origin: true,
   credentials: true
 }));
-app.use(express.json());
+// Shopify Webhookの署名検証には生のリクエストボディが必要なため保持しておく
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; }
+}));
 app.use(officeMiddleware);
 
 app.use('/api/auth',     require('./routes/auth'));
@@ -24,6 +27,7 @@ app.use('/api/line',     require('./routes/line'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/menus',    require('./routes/menus'));
 app.use('/api/points',   require('./routes/points'));
+app.use('/api/payments', require('./routes/payments'));
 app.use('/api/contact',  require('./routes/contact'));
 app.use('/api/driver',   require('./routes/driver'));
 

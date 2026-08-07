@@ -123,7 +123,12 @@ orders(id, member_id, office_id, product_id, quantity, delivery_date, total_pric
 order_options(id, order_id, name, price)
 holidays(id, closed_sat, closed_sun, closed_hol, extra_dates)
 notification_settings(id, email_enabled, email_address, line_enabled, line_user_id)
+payment_sessions(token, member_id, office_id, status, subtotal, points_used, amount, items, shopify_draft_order_id, shopify_order_id, invoice_url, expires_at, paid_at)
+payment_settings(id, credit_enabled, free_min_total)
 ```
+
+`orders` には決済用の列も追加されている（v17）：
+`payment_method`（cash / credit）、`payment_status`（unpaid / paid）、`paid_at`、`shopify_order_id`、`payment_session_token`
 
 **注意：** 全テーブルでRLS無効。バックエンドはservice_roleキーを使用。
 
@@ -141,6 +146,12 @@ LINE_CHANNEL_SECRET       LINE Messaging API チャンネルシークレット
 LINE_CHANNEL_TOKEN        LINE Messaging API アクセストークン
 GMAIL_USER                Gmailアドレス
 GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペースなし）
+
+SHOPIFY_SHOP_DOMAIN       xxxx.myshopify.com（フリー会員のカード決済用）
+SHOPIFY_ADMIN_TOKEN       カスタムアプリのAdmin APIアクセストークン（shpat_...）
+SHOPIFY_WEBHOOK_SECRET    Webhookの署名シークレット
+SHOPIFY_API_VERSION       省略可（既定：2024-10）
+BACKEND_URL               省略可。Webhook自動登録時のコールバック元URL
 ```
 
 ---
@@ -160,6 +171,7 @@ GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペー�
 /free/home           フリー会員注文画面
 /free/history        フリー会員注文履歴
 /free/profile        フリー会員マイページ
+/free/payment/:token フリー会員の決済状況（Shopify決済ページへの中継・入金待ち画面）
 ```
 
 ### 管理者向け
@@ -173,7 +185,7 @@ GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペー�
 /admin/members       会員管理
 /admin/offices       事業所管理
 /admin/billing       請求管理
-/admin/settings      設定（休日・通知）
+/admin/settings      設定（休日・通知・決済）
 ```
 
 ---
@@ -182,10 +194,11 @@ GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペー�
 
 ### 会員機能
 - 事業所別マルチテナント（slug方式）
-- フリー会員（合計3,000円以上から注文可能）
+- フリー会員（合計3,000円以上から注文可能／金額は管理画面で変更可）
 - 注文（商品・オプション・個数・配達日・備考）
-- 注文編集・キャンセル（締切前のみ）
+- 注文編集・キャンセル（締切前のみ。カード決済済みの注文は不可）
 - 締切：前営業日15:00 JST
+- フリー会員のその場カード決済（Shopify連携）
 
 ### 商品管理
 - 提供曜日設定（例：火・金のみ）
@@ -208,6 +221,67 @@ GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペー�
 - iPhoneはSafariから追加（必須）
 - Cookie + localStorage でログイン状態を永続化（iOS ITP対策）
 - 事業所ごとのURLが起点：`/o/:slug/home`
+
+---
+
+## Shopify連携（フリー会員のその場決済）
+
+フリー会員がカート確定時にクレジットカードで即時決済できる。
+事業所会員は従来どおり月次請求のため対象外。
+
+### 仕組み
+
+Shopifyの **下書き注文（Draft Order）** を使う。
+商品をShopify側に登録する必要がなく、任意の商品名・金額で明細を作れるため、
+弁当アプリの商品マスタとShopifyを同期する必要がない。
+
+```
+1. カート確定（クレジット決済を選択）
+     ↓  POST /api/payments/checkout
+2. サーバーが価格・締切・最低注文金額を再計算して payment_sessions に pending で保存
+     ↓  Shopify下書き注文を作成
+3. 会員を invoiceUrl（Shopifyのホスト型決済ページ）へ誘導
+     ↓  カード決済
+4. Shopify Webhook（orders/paid）→ orders を作成し、セッションを paid に
+5. 会員がアプリに戻ると /free/payment/:token が完了画面に切り替わる
+```
+
+**注文が作られるのは入金確認後**。未決済のカートが注文一覧・印刷・請求に混ざることはない。
+
+### 取りこぼし対策
+
+- Webhookが届かなくても、会員がアプリに戻った時点でShopifyへ問い合わせて自動的に追いつく
+  （`GET /api/payments/session/:token`・`GET /api/payments/my/pending`）
+- 2時間で期限切れ。使用予定だったポイントは自動で残高に戻る
+- 入金済みなのに注文登録に失敗した場合は、LINE・メールで管理者に通知する
+
+### セットアップ
+
+1. **Shopifyでカスタムアプリを作成**
+   Shopify管理画面 → 設定 → アプリと販売チャネル → アプリを開発
+   Admin APIスコープに `write_draft_orders` / `read_draft_orders` / `read_orders` /
+   `write_webhooks` を付与し、アクセストークン（`shpat_...`）を発行
+
+2. **Renderに環境変数を設定**
+   `SHOPIFY_SHOP_DOMAIN` / `SHOPIFY_ADMIN_TOKEN` / `SHOPIFY_WEBHOOK_SECRET`
+
+3. **Supabaseで `scripts/v17_shopify_payments.sql` を実行**
+
+4. **管理画面 → 設定 → 決済設定**
+   「Webhookを登録する」→「フリー会員のカード決済を有効にする」にチェックして保存
+   （`SHOPIFY_WEBHOOK_SECRET` はShopify側のWebhook署名シークレットと一致させること）
+
+環境変数と管理画面のトグルが **両方** 揃ってはじめてカート画面にクレジット決済が出る。
+どちらかが欠けている間は自動的に現金払いのみになる。
+
+### 注意点
+
+- 商品価格は **税込** 前提。下書き注文は `taxExempt: true` で作るのでShopify側で税は上乗せされない
+- 配達は自社便のため `requiresShipping: false`。決済画面で住所は聞かれない
+- ポイントは決済ページ作成時に残高から引かれ、期限切れ・中止で戻る
+- **返金はShopify管理画面での操作が必要**。
+  カード決済済みの注文は会員側では変更・キャンセルできず、
+  管理者が削除した場合は該当Shopify注文へのリンクが表示される
 
 ---
 
@@ -280,3 +354,5 @@ returns boolean ...
 - CORSを特定ドメインのみに絞る
 - ワイルドカードサブドメイン（`*.order.satonoaji-mikawa.net`）の完全対応
 - 管理者パスワード変更機能の追加
+- カード決済済み注文の返金をアプリ側から実行できるようにする（現状はShopify管理画面で操作）
+- 期限切れの決済セッションを定期的に掃除するバッチ（現状は会員のアクセス時に判定）
