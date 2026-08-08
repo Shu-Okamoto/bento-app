@@ -148,8 +148,10 @@ GMAIL_USER                Gmailアドレス
 GMAIL_APP_PASSWORD        Gmailアプリパスワード（16文字・スペースなし）
 
 SHOPIFY_SHOP_DOMAIN       xxxx.myshopify.com（フリー会員のカード決済用）
-SHOPIFY_ADMIN_TOKEN       カスタムアプリのAdmin APIアクセストークン（shpat_...）
-SHOPIFY_WEBHOOK_SECRET    Webhookの署名シークレット
+SHOPIFY_CLIENT_ID         Dev DashboardアプリのClient ID
+SHOPIFY_CLIENT_SECRET     同 Client Secret（shpss_...）※Webhook署名にも使われる
+SHOPIFY_ADMIN_TOKEN       旧カスタムアプリを使う場合のみ（shpat_...）
+SHOPIFY_WEBHOOK_SECRET    省略可。Webhookを手動作成した場合のみ設定
 SHOPIFY_API_VERSION       省略可（既定：2024-10）
 BACKEND_URL               省略可。Webhook自動登録時のコールバック元URL
 ```
@@ -257,42 +259,58 @@ Shopifyの **下書き注文（Draft Order）** を使う。
 
 ### セットアップ
 
-1. **Shopifyでカスタムアプリを作成**
-   Shopify管理画面 → 設定 → アプリと販売チャネル → アプリを開発
+1. **Shopify Dev Dashboard でアプリを作成**
 
-   「構成」タブでAdmin APIスコープを付与してから保存する（インストール前に行う）：
-   `write_draft_orders` / `read_draft_orders` / `read_orders`
-   ※ Webhookの購読は「トピックごとに対応するスコープ」で許可される。
-     `orders/paid` と `orders/create` は `read_orders` で足りる。
+   **2026年1月以降、ストア管理画面（設定 → アプリと販売チャネル → アプリを開発）からの
+   新規カスタムアプリ作成は廃止された。** 新規は Dev Dashboard で作成する。
+   （それ以前に作った既存のカスタムアプリはそのまま動き続ける）
 
-   「APIクレデンシャル」タブ →「アプリをインストール」→
-   Admin APIアクセストークン（`shpat_...`）を表示して控える。
-   **このトークンは一度しか表示されない。**
-   見逃した場合はアプリをアンインストール→再インストールで再発行する。
+   - Dev Dashboard → Create app でアプリを作成
+   - アプリの設定で Admin API スコープを指定：
+     `write_draft_orders` / `read_draft_orders` / `read_orders`
+     ※ Webhookの購読は「トピックごとに対応するスコープ」で許可される。
+       `orders/paid` と `orders/create` は `read_orders` で足りる。
+   - **対象ストアにアプリをインストールする**（インストール済みでないとトークンを取得できない）
+   - Client ID と Client Secret（`shpss_...`）を控える
+
+   ※「オートメーショントークン（App Automation Token）」は
+     Shopify CLI を CI/CD で認証してアプリ自体をデプロイするためのもので、
+     Admin API の呼び出しには使えない。混同しないこと。
 
 2. **Renderに環境変数を設定**
 
    | 環境変数 | 取得場所 |
    |---|---|
    | `SHOPIFY_SHOP_DOMAIN` | 管理画面URL `admin.shopify.com/store/<ハンドル>` の `<ハンドル>` + `.myshopify.com`。独自ドメインは不可 |
-   | `SHOPIFY_ADMIN_TOKEN` | APIクレデンシャルタブの「Admin APIアクセストークン」（`shpat_...`） |
-   | `SHOPIFY_WEBHOOK_SECRET` | 同じAPIクレデンシャルタブの **「APIシークレットキー」**（client secret） |
+   | `SHOPIFY_CLIENT_ID` | Dev Dashboard のアプリの Client ID |
+   | `SHOPIFY_CLIENT_SECRET` | 同じく Client Secret（`shpss_...`） |
 
-   **`SHOPIFY_WEBHOOK_SECRET` は要注意。** Webhookの署名に使われる鍵は、
-   Webhookを「誰が作ったか」で変わる：
-   - アプリがAPIで作った場合（＝管理画面の「Webhookを登録する」ボタン）
-     → **アプリのAPIシークレットキー**
-   - 設定 → 通知 → Webhook から手で作った場合
-     → **そのページ下部に表示される専用のシークレット**（アプリのものとは別）
+   Client ID / Secret は **client credentials grant** で
+   24時間有効なアクセストークンに交換される（`backend/src/utils/shopify.js`）。
+   トークンはメモリ上にキャッシュされ、期限が切れる前に自動で取り直すため、
+   運用側で更新作業は不要。401が返った場合も一度だけ自動で再取得してやり直す。
 
-   混同すると署名検証に失敗し、Webhookが常に401で弾かれる（入金しても注文が作られない）。
-   本アプリは前者を前提にしているので、APIシークレットキーを設定すること。
+   **`SHOPIFY_WEBHOOK_SECRET` は原則不要。** Dev Dashboard のアプリが作成した
+   Webhookは Client Secret で署名されるため、未設定なら `SHOPIFY_CLIENT_SECRET`
+   が自動的に使われる。ただし
+   `設定 → 通知 → Webhook` から**手動で**Webhookを作った場合だけは、
+   そのページ下部に表示される専用のシークレットを `SHOPIFY_WEBHOOK_SECRET` に設定すること
+   （鍵が別物なので、混同すると署名検証が常に401で失敗し、入金しても注文が作られない）。
+
+   <details>
+   <summary>2026年より前に作った旧カスタムアプリを使う場合</summary>
+
+   `SHOPIFY_CLIENT_ID` / `SHOPIFY_CLIENT_SECRET` の代わりに
+   `SHOPIFY_ADMIN_TOKEN`（`shpat_...`）を設定する。
+   この場合トークンの交換は行わず、その値をそのまま使う。
+   `SHOPIFY_WEBHOOK_SECRET` にはアプリのAPIシークレットキーを設定する。
+   </details>
 
 3. **Supabaseで `scripts/v17_shopify_payments.sql` を実行**
 
 4. **管理画面 → 設定 → 決済設定**
-   「Webhookを登録する」→「フリー会員のカード決済を有効にする」にチェックして保存
-   （`SHOPIFY_WEBHOOK_SECRET` はShopify側のWebhook署名シークレットと一致させること）
+   「接続テスト」で店舗名が返ることを確認 →「Webhookを登録する」→
+   「フリー会員のカード決済を有効にする」にチェックして保存
 
 環境変数と管理画面のトグルが **両方** 揃ってはじめてカート画面にクレジット決済が出る。
 どちらかが欠けている間は自動的に現金払いのみになる。

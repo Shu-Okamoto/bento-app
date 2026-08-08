@@ -582,8 +582,22 @@ router.get('/admin/settings', adminMiddleware, async (_req, res) => {
     shopify_configured: shopify.isConfigured(),
     shopify_shop_domain: shopify.shopDomain() || null,
     shopify_api_version: shopify.apiVersion(),
+    shopify_auth_mode: shopify.authMode(),
     webhook_secret_configured: !!shopify.webhookSecret(),
   });
+});
+
+// 接続テスト（トークン・スコープが実際に有効かをShopifyに問い合わせて確認する）
+router.post('/admin/test-connection', adminMiddleware, async (_req, res) => {
+  if (!shopify.isConfigured()) {
+    return res.status(400).json({ error: 'Shopifyの環境変数が設定されていません' });
+  }
+  try {
+    const shop = await shopify.testConnection();
+    res.json({ ok: true, shop });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
 });
 
 router.put('/admin/settings', adminMiddleware, async (req, res) => {

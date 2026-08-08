@@ -576,6 +576,19 @@ export function Settings() {
     setPaymentSaved(true); setTimeout(() => setPaymentSaved(false), 2000);
   }
 
+  async function testConnection() {
+    setWebhookResult(null);
+    try {
+      const r = await api.post('/payments/admin/test-connection', {});
+      const mode = r.shop?.auth_mode === 'client_credentials'
+        ? 'Client ID/Secret方式'
+        : 'アクセストークン方式';
+      setWebhookResult({ ok: true, message: `接続成功：${r.shop?.name}（${r.shop?.myshopifyDomain}）／${mode}` });
+    } catch (e) {
+      setWebhookResult({ ok: false, message: `接続失敗：${e.message}` });
+    }
+  }
+
   async function registerWebhook() {
     setWebhookResult(null);
     try {
@@ -721,6 +734,14 @@ export function Settings() {
             </span>
           </div>
           <div style={{ display:'flex', justifyContent:'space-between', padding:'3px 0' }}>
+            <span style={{ color:'#666' }}>認証方式</span>
+            <span style={{ fontWeight:600, color:'#555' }}>
+              {payment.shopify_auth_mode === 'client_credentials' ? 'Client ID/Secret（Dev Dashboard）'
+                : payment.shopify_auth_mode === 'static_token' ? 'アクセストークン（旧カスタムアプリ）'
+                : '—'}
+            </span>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'3px 0' }}>
             <span style={{ color:'#666' }}>Webhook署名シークレット</span>
             <span style={{ fontWeight:600, color: payment.webhook_secret_configured ? '#0F6E56' : '#c0392b' }}>
               {payment.webhook_secret_configured ? '✓ 設定済み' : '未設定'}
@@ -732,8 +753,12 @@ export function Settings() {
           <div style={{ background:'#fff8ee', border:'1px solid #FAC775', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#633806', marginBottom:14, lineHeight:1.8 }}>
             <strong>Renderの環境変数を設定してください：</strong><br/>
             SHOPIFY_SHOP_DOMAIN（例：xxxx.myshopify.com）<br/>
-            SHOPIFY_ADMIN_TOKEN（カスタムアプリのAdmin APIトークン）<br/>
-            SHOPIFY_WEBHOOK_SECRET（Webhookの署名シークレット）
+            SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET<br/>
+            （Dev Dashboardで作成したアプリのClient ID・Client Secret）<br/>
+            <span style={{ color:'#8a6a3a' }}>
+              ※ 管理画面で作った旧カスタムアプリを使う場合は
+              SHOPIFY_CLIENT_* の代わりに SHOPIFY_ADMIN_TOKEN を設定
+            </span>
           </div>
         )}
 
@@ -761,6 +786,9 @@ export function Settings() {
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <button className="btn btn-primary" onClick={savePayment}>
             {paymentSaved ? '✓ 保存しました' : '決済設定を保存'}
+          </button>
+          <button className="btn btn-secondary" onClick={testConnection} disabled={!payment.shopify_configured}>
+            接続テスト
           </button>
           <button className="btn btn-secondary" onClick={registerWebhook} disabled={!payment.shopify_configured}>
             Webhookを登録する

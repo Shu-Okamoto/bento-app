@@ -24,25 +24,87 @@ function shopDomain() {
     .replace(/\/+$/, '');
 }
 
+function clientId() { return (process.env.SHOPIFY_CLIENT_ID || '').trim(); }
+function clientSecret() { return (process.env.SHOPIFY_CLIENT_SECRET || '').trim(); }
+function staticToken() { return (process.env.SHOPIFY_ADMIN_TOKEN || '').trim(); }
+
+// 認証方式は2通り：
+//   client_credentials … Dev Dashboardで作ったアプリ（2026年以降の新規はこちら）
+//                        Client ID / Secret を24時間有効なトークンに交換する
+//   static_token       … 管理画面で作った旧来のカスタムアプリ（shpat_...）
+//                        2026年1月以降は新規作成不可だが、既存のものは動き続ける
+function authMode() {
+  if (staticToken()) return 'static_token';
+  if (clientId() && clientSecret()) return 'client_credentials';
+  return null;
+}
+
 function isConfigured() {
-  return !!(shopDomain() && process.env.SHOPIFY_ADMIN_TOKEN);
+  return !!(shopDomain() && authMode());
 }
 
 function webhookSecret() {
-  return process.env.SHOPIFY_WEBHOOK_SECRET || '';
+  // Dev Dashboardのアプリでは Client Secret がそのままWebhookの署名鍵になる
+  return process.env.SHOPIFY_WEBHOOK_SECRET || clientSecret() || '';
 }
 
-async function graphql(query, variables) {
+// client credentials grant で得たトークンのキャッシュ（有効期限つき）
+let tokenCache = null; // { token, expiresAt }
+
+async function requestAccessToken() {
+  const res = await fetch(`https://${shopDomain()}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      client_id: clientId(),
+      client_secret: clientSecret(),
+    }),
+  });
+
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); }
+  catch { throw new Error(`アクセストークンの取得に失敗しました（HTTP ${res.status}）`); }
+
+  if (!res.ok || !json.access_token) {
+    const detail = json.error_description || json.error || text.slice(0, 200);
+    throw new Error(`アクセストークンの取得に失敗しました（HTTP ${res.status}）: ${detail}`);
+  }
+
+  // 既定は24時間。期限ぎりぎりで使わないよう60秒手前で切れる扱いにする
+  const ttlMs = (Number(json.expires_in) || 86399) * 1000;
+  tokenCache = { token: json.access_token, expiresAt: Date.now() + ttlMs - 60_000 };
+  return tokenCache.token;
+}
+
+async function accessToken({ force = false } = {}) {
+  const mode = authMode();
+  if (!mode) throw new Error('Shopify連携が設定されていません');
+  if (mode === 'static_token') return staticToken();
+
+  if (!force && tokenCache && Date.now() < tokenCache.expiresAt) return tokenCache.token;
+  return requestAccessToken();
+}
+
+async function graphql(query, variables, { retryOnAuthError = true } = {}) {
   if (!isConfigured()) throw new Error('Shopify連携が設定されていません');
 
   const res = await fetch(`https://${shopDomain()}/admin/api/${apiVersion()}/graphql.json`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+      'X-Shopify-Access-Token': await accessToken(),
     },
     body: JSON.stringify({ query, variables }),
   });
+
+  // キャッシュしたトークンが失効していた場合は取り直して一度だけやり直す
+  if (res.status === 401 && retryOnAuthError && authMode() === 'client_credentials') {
+    tokenCache = null;
+    await accessToken({ force: true });
+    return graphql(query, variables, { retryOnAuthError: false });
+  }
 
   const text = await res.text();
   let json;
@@ -58,6 +120,12 @@ async function graphql(query, variables) {
     throw new Error(`Shopify APIエラー: ${json.errors.map(e => e.message).join(' / ')}`);
   }
   return json.data;
+}
+
+// 設定が正しいか確認する（管理画面の「接続テスト」用）
+async function testConnection() {
+  const data = await graphql(`{ shop { name myshopifyDomain currencyCode } }`, {});
+  return { ...data.shop, auth_mode: authMode() };
 }
 
 function throwUserErrors(payload, label) {
@@ -249,7 +317,10 @@ module.exports = {
   isConfigured,
   shopDomain,
   apiVersion,
+  authMode,
   webhookSecret,
+  accessToken,
+  testConnection,
   graphql,
   numericId,
   orderAdminUrl,
