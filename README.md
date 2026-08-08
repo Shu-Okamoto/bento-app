@@ -259,11 +259,34 @@ Shopifyの **下書き注文（Draft Order）** を使う。
 
 1. **Shopifyでカスタムアプリを作成**
    Shopify管理画面 → 設定 → アプリと販売チャネル → アプリを開発
-   Admin APIスコープに `write_draft_orders` / `read_draft_orders` / `read_orders` /
-   `write_webhooks` を付与し、アクセストークン（`shpat_...`）を発行
+
+   「構成」タブでAdmin APIスコープを付与してから保存する（インストール前に行う）：
+   `write_draft_orders` / `read_draft_orders` / `read_orders`
+   ※ Webhookの購読は「トピックごとに対応するスコープ」で許可される。
+     `orders/paid` と `orders/create` は `read_orders` で足りる。
+
+   「APIクレデンシャル」タブ →「アプリをインストール」→
+   Admin APIアクセストークン（`shpat_...`）を表示して控える。
+   **このトークンは一度しか表示されない。**
+   見逃した場合はアプリをアンインストール→再インストールで再発行する。
 
 2. **Renderに環境変数を設定**
-   `SHOPIFY_SHOP_DOMAIN` / `SHOPIFY_ADMIN_TOKEN` / `SHOPIFY_WEBHOOK_SECRET`
+
+   | 環境変数 | 取得場所 |
+   |---|---|
+   | `SHOPIFY_SHOP_DOMAIN` | 管理画面URL `admin.shopify.com/store/<ハンドル>` の `<ハンドル>` + `.myshopify.com`。独自ドメインは不可 |
+   | `SHOPIFY_ADMIN_TOKEN` | APIクレデンシャルタブの「Admin APIアクセストークン」（`shpat_...`） |
+   | `SHOPIFY_WEBHOOK_SECRET` | 同じAPIクレデンシャルタブの **「APIシークレットキー」**（client secret） |
+
+   **`SHOPIFY_WEBHOOK_SECRET` は要注意。** Webhookの署名に使われる鍵は、
+   Webhookを「誰が作ったか」で変わる：
+   - アプリがAPIで作った場合（＝管理画面の「Webhookを登録する」ボタン）
+     → **アプリのAPIシークレットキー**
+   - 設定 → 通知 → Webhook から手で作った場合
+     → **そのページ下部に表示される専用のシークレット**（アプリのものとは別）
+
+   混同すると署名検証に失敗し、Webhookが常に401で弾かれる（入金しても注文が作られない）。
+   本アプリは前者を前提にしているので、APIシークレットキーを設定すること。
 
 3. **Supabaseで `scripts/v17_shopify_payments.sql` を実行**
 
