@@ -47,6 +47,14 @@ router.post('/register', async (req, res) => {
   const { data: office } = await supabase.from('offices').select('id').eq('slug', office_slug).single();
   if (!office) return res.status(404).json({ error: '事業所が見つかりません' });
 
+  // 同じ電話番号ですでに登録されていないかチェック（有効な会員のみ）
+  if (phone) {
+    const { data: dup } = await supabase.from('members')
+      .select('id').eq('office_id', office.id).eq('member_type', 'office')
+      .eq('phone', phone).is('withdrawn_at', null).maybeSingle();
+    if (dup) return res.status(400).json({ error: 'この電話番号はすでに登録されています' });
+  }
+
   const password_hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase.from('members')
     .insert({ office_id: office.id, name, department, phone, address, password_hash, member_type: 'office' })
@@ -69,6 +77,12 @@ router.post('/register/free', async (req, res) => {
   // フリー会員用オフィスを取得
   const { data: office } = await supabase.from('offices').select('id').eq('slug', 'free').single();
   if (!office) return res.status(500).json({ error: 'フリー会員設定が見つかりません' });
+
+  // 同じ電話番号ですでに登録されていないかチェック（有効なフリー会員のみ）
+  const { data: dup } = await supabase.from('members')
+    .select('id').eq('member_type', 'free')
+    .eq('phone', phone).is('withdrawn_at', null).maybeSingle();
+  if (dup) return res.status(400).json({ error: 'この電話番号はすでに登録されています' });
 
   const password_hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase.from('members')
