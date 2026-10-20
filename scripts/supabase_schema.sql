@@ -105,6 +105,20 @@ insert into products (name, price, is_active, sort_order) values
   ('焼き魚弁当', 700, true, 3),
   ('ヘルシー野菜弁当', 580, true, 4);
 
+-- =============================================
+-- GRANT 権限（2026-10-30以降の新規環境向け）
+-- 本アプリは全てバックエンド経由 (service_role) でアクセスするため
+-- service_role のみに権限付与。anon/authenticated には付与しない。
+-- =============================================
+grant select, insert, update, delete on public.admins to service_role;
+grant select, insert, update, delete on public.offices to service_role;
+grant select, insert, update, delete on public.members to service_role;
+grant select, insert, update, delete on public.products to service_role;
+grant select, insert, update, delete on public.product_options to service_role;
+grant select, insert, update, delete on public.orders to service_role;
+grant select, insert, update, delete on public.order_options to service_role;
+grant select, insert, update, delete on public.holidays to service_role;
+
 -- 幕の内弁当のオプション（product_idは上記のIDに置き換え）
 -- insert into product_options (product_id, name, price) values
 --   ('...uuid...', 'ごはん大盛', 50),

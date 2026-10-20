@@ -20,3 +20,6 @@ create table if not exists point_settings (
 
 insert into point_settings (id) values (1)
 on conflict (id) do nothing;
+
+-- 2026-10-30 以降に新規作成されるテーブルは自動GRANTされないため明示付与。
+grant select, insert, update, delete on public.point_settings to service_role;
