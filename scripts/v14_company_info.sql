@@ -18,3 +18,6 @@ insert into public.company_info (id) values (1)
   on conflict (id) do nothing;
 
 alter table public.company_info enable row level security;
+
+-- 2026-10-30 以降に新規作成されるテーブルは自動GRANTされないため明示付与。
+grant select, insert, update, delete on public.company_info to service_role;

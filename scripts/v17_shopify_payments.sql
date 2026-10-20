@@ -92,3 +92,7 @@ insert into public.payment_settings (id) values (1)
   on conflict (id) do nothing;
 
 alter table public.payment_settings enable row level security;
+
+-- 2026-10-30 以降に新規作成されるテーブルは自動GRANTされないため明示付与。
+grant select, insert, update, delete on public.payment_sessions to service_role;
+grant select, insert, update, delete on public.payment_settings to service_role;

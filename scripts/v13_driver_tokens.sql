@@ -17,3 +17,7 @@ create index if not exists driver_tokens_driver_number_idx
   on public.driver_tokens (driver_number);
 
 alter table public.driver_tokens enable row level security;
+
+-- 2026-10-30 以降に新規作成されるテーブルは自動GRANTされないため明示付与。
+-- バックエンド経由 (service_role) のみアクセス、anon/authenticated には付与しない。
+grant select, insert, update, delete on public.driver_tokens to service_role;
